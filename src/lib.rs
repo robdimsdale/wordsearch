@@ -1,4 +1,6 @@
 use itertools::iproduct;
+use itertools::Itertools;
+use std::fmt;
 use std::slice::Iter;
 
 pub type Cell = (usize, usize);
@@ -30,6 +32,19 @@ impl Square {
     fn value_at_cell(&self, cell: &Cell) -> char {
         // TODO: bounds check
         self.chars[cell.0][cell.1]
+    }
+}
+
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for row in &self.chars {
+            writeln!(
+                f,
+                "{}",
+                row.clone().into_iter().intersperse(' ').collect::<String>()
+            )?
+        }
+        Ok(())
     }
 }
 

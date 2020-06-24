@@ -9,7 +9,7 @@ fn main() {
     let words = ["now", "pen", "tan", "top"];
 
     println!("words: {:?}", words);
-    println!("{:?}", square);
+    print!("{}", square);
 
     let found_words = solve_square(&square, &words);
     for w in found_words {
