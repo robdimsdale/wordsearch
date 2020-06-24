@@ -15,10 +15,41 @@ fn test_square() {
 
     assert_eq!(
         found_words[0],
-        FoundWord {
+        WordLocation {
             word: "now".to_string(),
-            start_cell: (2, 0),
-            end_cell: (2, 2),
+            start_cell: Cell { row: 2, col: 0 },
+            end_cell: Cell { row: 2, col: 2 },
+            direction: Direction::Right,
         }
-    )
+    );
+
+    assert_eq!(
+        found_words[1],
+        WordLocation {
+            word: "pen".to_string(),
+            start_cell: Cell { row: 0, col: 2 },
+            end_cell: Cell { row: 2, col: 0 },
+            direction: Direction::DownLeft,
+        }
+    );
+
+    assert_eq!(
+        found_words[2],
+        WordLocation {
+            word: "tan".to_string(),
+            start_cell: Cell { row: 0, col: 0 },
+            end_cell: Cell { row: 2, col: 0 },
+            direction: Direction::Down,
+        }
+    );
+
+    assert_eq!(
+        found_words[3],
+        WordLocation {
+            word: "top".to_string(),
+            start_cell: Cell { row: 0, col: 0 },
+            end_cell: Cell { row: 0, col: 2 },
+            direction: Direction::Right,
+        }
+    );
 }

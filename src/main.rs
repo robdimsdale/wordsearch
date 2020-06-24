@@ -1,7 +1,7 @@
 use wordsquare::*;
 
 fn main() {
-    let square = Square::new(&vec![
+    let square = Square::new(&[
         vec!['t', 'o', 'p'],
         vec!['a', 'e', 'z'],
         vec!['n', 'o', 'w'],
@@ -13,6 +13,7 @@ fn main() {
 
     let found_words = solve_square(&square, &words);
     for w in found_words {
-        println!("{:?}", w)
+        println!("{:?}", w);
+        println!("{}", square.one_word_square(&w.start_cell, &w.end_cell));
     }
 }

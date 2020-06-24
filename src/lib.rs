@@ -3,18 +3,81 @@ use itertools::Itertools;
 use std::fmt;
 use std::slice::Iter;
 
-pub type Cell = (usize, usize);
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Cell {
+    pub row: usize,
+    pub col: usize,
+}
 
 #[derive(Debug)]
 pub struct Square {
     chars: Vec<Vec<char>>,
 }
 
-impl Square {
-    pub fn new(chars: &Vec<Vec<char>>) -> Square {
-        Square {
-            chars: chars.clone(),
+fn direction_between_cells(start_cell: &Cell, end_cell: &Cell) -> Direction {
+    let up = start_cell.row > end_cell.row;
+    let down = start_cell.row < end_cell.row;
+
+    let left = start_cell.col > end_cell.col;
+    let right = start_cell.col < end_cell.col;
+
+    if up {
+        if left {
+            return Direction::UpLeft;
+        } else if right {
+            return Direction::UpRight;
+        } else {
+            return Direction::Up;
         }
+    } else if down {
+        if left {
+            return Direction::DownLeft;
+        } else if right {
+            return Direction::DownRight;
+        } else {
+            return Direction::Down;
+        }
+    } else {
+        if left {
+            return Direction::Left;
+        } else if right {
+            return Direction::Right;
+        } else {
+            panic!();
+        }
+    }
+}
+
+impl Square {
+    pub fn new(chars: &[Vec<char>]) -> Square {
+        Square {
+            chars: chars.to_owned(),
+        }
+    }
+
+    pub fn one_word_square(&self, start_cell: &Cell, end_cell: &Cell) -> Square {
+        let direction = direction_between_cells(start_cell, end_cell);
+
+        let mut square = Square::new(&vec![vec!['_'; self.cols()]; self.rows()]);
+        let mut cell = start_cell.to_owned();
+
+        let val = self.value_at_cell(&cell);
+        square.set_value_at_cell(&cell, val);
+
+        while let Some(next_cell) = self.next_cell_in_direction(&cell, &direction) {
+            let val = self.value_at_cell(&cell);
+            square.set_value_at_cell(&cell, val);
+
+            if next_cell == *end_cell {
+                break;
+            }
+            cell = next_cell
+        }
+
+        let last_val = self.value_at_cell(&end_cell);
+        square.set_value_at_cell(&end_cell, last_val);
+
+        square
     }
 
     fn rows(&self) -> usize {
@@ -29,9 +92,35 @@ impl Square {
         }
     }
 
+    fn set_value_at_cell(&mut self, cell: &Cell, val: char) {
+        self.chars[cell.row][cell.col] = val;
+    }
+
     fn value_at_cell(&self, cell: &Cell) -> char {
         // TODO: bounds check
-        self.chars[cell.0][cell.1]
+        self.chars[cell.row][cell.col]
+    }
+
+    fn next_cell_in_direction(&self, cell: &Cell, direction: &Direction) -> Option<Cell> {
+        let (row, col) = match direction {
+            Direction::Up => (cell.row as isize - 1, cell.col as isize),
+            Direction::UpRight => (cell.row as isize - 1, cell.col as isize + 1),
+            Direction::Right => (cell.row as isize, cell.col as isize + 1),
+            Direction::DownRight => (cell.row as isize + 1, cell.col as isize + 1),
+            Direction::Down => (cell.row as isize + 1, cell.col as isize),
+            Direction::DownLeft => (cell.row as isize + 1, cell.col as isize - 1),
+            Direction::Left => (cell.row as isize, cell.col as isize - 1),
+            Direction::UpLeft => (cell.row as isize - 1, cell.col as isize - 1),
+        };
+
+        if row < 0 || col < 0 || row as usize >= self.rows() || col as usize >= self.cols() {
+            return None;
+        }
+
+        Some(Cell {
+            row: row as usize,
+            col: col as usize,
+        })
     }
 }
 
@@ -49,14 +138,15 @@ impl fmt::Display for Square {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct FoundWord {
+pub struct WordLocation {
     pub word: String,
     pub start_cell: Cell,
     pub end_cell: Cell,
+    pub direction: Direction,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum Direction {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Direction {
     Up,
     UpRight,
     Right,
@@ -83,28 +173,33 @@ impl Direction {
     }
 }
 
-pub fn solve_square(square: &Square, words: &[&str]) -> Vec<FoundWord> {
-    let mut found_words = words
+pub fn solve_square(square: &Square, words: &[&str]) -> Vec<WordLocation> {
+    let mut word_locations = words
         .iter()
-        .map(|w| FoundWord {
+        .map(|w| WordLocation {
             word: w.to_owned().to_owned(),
-            start_cell: (0, 0),
-            end_cell: (0, 0),
+            start_cell: Cell { row: 0, col: 0 },
+            end_cell: Cell { row: 0, col: 0 },
+            direction: Direction::Up,
         })
         .collect::<Vec<_>>();
 
     for (row, col, direction) in
         iproduct!(0..square.rows(), 0..square.cols(), Direction::iterator())
     {
-        let cell = (row, col);
-        if let Some(fw) = find_word_in_direction(vec![cell], &direction, square, words) {
-            let mut w = &mut found_words.iter_mut().find(|w| w.word == fw.word).unwrap();
-            w.start_cell = fw.start_cell;
-            w.end_cell = fw.end_cell;
+        let cell = Cell { row, col };
+        if let Some(found) = find_word_in_direction(vec![cell], &direction, square, words) {
+            let mut w = &mut word_locations
+                .iter_mut()
+                .find(|w| w.word == found.word)
+                .unwrap();
+            w.start_cell = found.start_cell;
+            w.end_cell = found.end_cell;
+            w.direction = found.direction;
         }
     }
 
-    found_words
+    word_locations
 }
 
 fn find_word_in_direction(
@@ -112,7 +207,7 @@ fn find_word_in_direction(
     direction: &Direction,
     square: &Square,
     words: &[&str],
-) -> Option<FoundWord> {
+) -> Option<WordLocation> {
     let current_cell = cells[cells.len() - 1];
 
     let maybe_word = cells
@@ -121,36 +216,18 @@ fn find_word_in_direction(
         .collect::<String>();
 
     if let Some(found_word) = words.iter().find(|&&w| w == maybe_word) {
-        return Some(FoundWord {
+        return Some(WordLocation {
             word: found_word.to_string(),
             start_cell: cells[0],
             end_cell: cells[cells.len() - 1],
+            direction: direction.to_owned(),
         });
     }
 
-    if let Some(next_cell) = next_cell_in_direction(&current_cell, direction, square) {
+    if let Some(next_cell) = square.next_cell_in_direction(&current_cell, direction) {
         cells.push(next_cell);
         return find_word_in_direction(cells, direction, square, words);
     }
 
-    return None;
-}
-
-fn next_cell_in_direction(cell: &Cell, direction: &Direction, square: &Square) -> Option<Cell> {
-    let (row, col) = match direction {
-        Direction::Up => (cell.0 as isize - 1, cell.1 as isize),
-        Direction::UpRight => (cell.0 as isize - 1, cell.1 as isize + 1),
-        Direction::Right => (cell.0 as isize, cell.1 as isize + 1),
-        Direction::DownRight => (cell.0 as isize + 1, cell.1 as isize + 1),
-        Direction::Down => (cell.0 as isize + 1, cell.1 as isize),
-        Direction::DownLeft => (cell.0 as isize + 1, cell.1 as isize - 1),
-        Direction::Left => (cell.0 as isize, cell.1 as isize - 1),
-        Direction::UpLeft => (cell.0 as isize - 1, cell.1 as isize - 1),
-    };
-
-    if row < 0 || col < 0 || row as usize >= square.rows() || col as usize >= square.cols() {
-        return None;
-    }
-
-    return Some((row as usize, col as usize));
+    None
 }
