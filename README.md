@@ -1,0 +1,2 @@
+# wordsquare
+Solve wordsquares
