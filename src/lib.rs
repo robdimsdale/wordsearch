@@ -4,6 +4,7 @@ extern crate test;
 
 use itertools::iproduct;
 use itertools::Itertools;
+use std::collections::HashSet;
 use std::fmt;
 use std::slice::Iter;
 
@@ -141,6 +142,157 @@ impl Direction {
     }
 }
 
+pub fn solve_square_reverse_hash_first_two_letters(
+    square: &Square,
+    words: &[&str],
+) -> Vec<WordLocation> {
+    let mut all_words = words.to_vec();
+    let reverse_words = words
+        .iter()
+        .map(|w| w.chars().rev().collect::<String>())
+        .collect::<Vec<_>>();
+
+    all_words.extend(
+        &reverse_words
+            .iter()
+            .map(|w| w.as_str())
+            .collect::<Vec<&str>>(),
+    );
+
+    let directions = [
+        Direction::UpRight,
+        Direction::Right,
+        Direction::DownRight,
+        Direction::Down,
+    ];
+
+    let mut hashed: HashSet<Vec<char>> = HashSet::new();
+    for w in all_words.iter() {
+        let mut chars = w.chars();
+        hashed.insert(vec![chars.next().unwrap(), chars.next().unwrap()]);
+    }
+
+    let mut word_locations = Vec::new();
+
+    for (row, col, direction) in iproduct!(0..square.rows(), 0..square.cols(), directions.iter()) {
+        let cell = Cell { row, col };
+        if let Some(found) =
+            find_word_in_direction_hash(vec![cell], &direction, square, &all_words, &hashed, 2)
+        {
+            let w: WordLocation;
+            if words.contains(&found.word.as_str()) {
+                w = WordLocation {
+                    word: found.word,
+                    start_cell: found.start_cell,
+                    end_cell: found.end_cell,
+                    direction: found.direction,
+                };
+            } else {
+                w = WordLocation {
+                    word: found.word.to_string().chars().rev().collect::<String>(),
+                    start_cell: found.end_cell,
+                    end_cell: found.start_cell,
+                    direction: opposite_direction(&found.direction),
+                };
+            }
+            word_locations.push(w);
+        }
+    }
+
+    word_locations.sort();
+    word_locations
+}
+
+pub fn solve_square_reverse_hash_first_letter(
+    square: &Square,
+    words: &[&str],
+) -> Vec<WordLocation> {
+    let mut all_words = words.to_vec();
+    let reverse_words = words
+        .iter()
+        .map(|w| w.chars().rev().collect::<String>())
+        .collect::<Vec<_>>();
+
+    all_words.extend(
+        &reverse_words
+            .iter()
+            .map(|w| w.as_str())
+            .collect::<Vec<&str>>(),
+    );
+
+    let directions = [
+        Direction::UpRight,
+        Direction::Right,
+        Direction::DownRight,
+        Direction::Down,
+    ];
+
+    let mut hashed: HashSet<char> = HashSet::new();
+    for w in all_words.iter() {
+        hashed.insert(w.chars().next().unwrap());
+    }
+
+    let mut word_locations = Vec::new();
+
+    for (row, col, direction) in iproduct!(0..square.rows(), 0..square.cols(), directions.iter()) {
+        let cell = Cell { row, col };
+        if let Some(_) = hashed.get(&square.value_at_cell(&cell)) {
+            let cell = Cell { row, col };
+            if let Some(found) = find_word_in_direction(vec![cell], &direction, square, &all_words)
+            {
+                let w: WordLocation;
+                if words.contains(&found.word.as_str()) {
+                    w = WordLocation {
+                        word: found.word,
+                        start_cell: found.start_cell,
+                        end_cell: found.end_cell,
+                        direction: found.direction,
+                    };
+                } else {
+                    w = WordLocation {
+                        word: found.word.to_string().chars().rev().collect::<String>(),
+                        start_cell: found.end_cell,
+                        end_cell: found.start_cell,
+                        direction: opposite_direction(&found.direction),
+                    };
+                }
+                word_locations.push(w);
+            }
+        }
+    }
+
+    word_locations.sort();
+    word_locations
+}
+
+pub fn solve_square_hash_first_letter(square: &Square, words: &[&str]) -> Vec<WordLocation> {
+    let mut hashed: HashSet<char> = HashSet::new();
+    for w in words.iter() {
+        hashed.insert(w.chars().next().unwrap());
+    }
+
+    let mut word_locations = Vec::new();
+
+    for (row, col, direction) in
+        iproduct!(0..square.rows(), 0..square.cols(), Direction::iterator())
+    {
+        let cell = Cell { row, col };
+        if hashed.contains(&square.value_at_cell(&cell)) {
+            if let Some(found) = find_word_in_direction(vec![cell], &direction, square, words) {
+                word_locations.push(WordLocation {
+                    word: found.word,
+                    start_cell: found.start_cell,
+                    end_cell: found.end_cell,
+                    direction: found.direction,
+                });
+            }
+        }
+    }
+
+    word_locations.sort();
+    word_locations
+}
+
 pub fn solve_square_naive(square: &Square, words: &[&str]) -> Vec<WordLocation> {
     let mut word_locations = Vec::new();
 
@@ -225,6 +377,49 @@ fn opposite_direction(direction: &Direction) -> Direction {
     }
 }
 
+fn find_word_in_direction_hash(
+    mut cells: Vec<Cell>,
+    direction: &Direction,
+    square: &Square,
+    words: &[&str],
+    hashed: &HashSet<Vec<char>>,
+    hashed_length: usize,
+) -> Option<WordLocation> {
+    let current_cell = cells[cells.len() - 1];
+
+    if cells.len() == hashed_length {
+        if !hashed.contains(
+            &cells
+                .iter()
+                .map(|c| square.value_at_cell(&c))
+                .collect::<Vec<char>>(),
+        ) {
+            return None;
+        }
+    }
+
+    let maybe_word = cells
+        .iter()
+        .map(|c| square.value_at_cell(c))
+        .collect::<String>();
+
+    if words.contains(&maybe_word.as_str()) {
+        return Some(WordLocation {
+            word: maybe_word.to_string(),
+            start_cell: cells[0],
+            end_cell: cells[cells.len() - 1],
+            direction: direction.to_owned(),
+        });
+    }
+
+    if let Some(next_cell) = square.next_cell_in_direction(&current_cell, direction) {
+        cells.push(next_cell);
+        return find_word_in_direction(cells, direction, square, words);
+    }
+
+    None
+}
+
 fn find_word_in_direction(
     mut cells: Vec<Cell>,
     direction: &Direction,
@@ -238,9 +433,9 @@ fn find_word_in_direction(
         .map(|c| square.value_at_cell(c))
         .collect::<String>();
 
-    if let Some(found_word) = words.iter().find(|&&w| w == maybe_word) {
+    if words.contains(&maybe_word.as_str()) {
         return Some(WordLocation {
-            word: found_word.to_string(),
+            word: maybe_word.to_string(),
             start_cell: cells[0],
             end_cell: cells[cells.len() - 1],
             direction: direction.to_owned(),
@@ -510,6 +705,36 @@ mod tests {
     fn bench_solve_square_naive(b: &mut Bencher) {
         b.iter(|| {
             assert_found_words(&solve_square_naive(
+                &square(),
+                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+            ));
+        });
+    }
+
+    #[bench]
+    fn bench_solve_square_naive_hash_first_letter(b: &mut Bencher) {
+        b.iter(|| {
+            assert_found_words(&solve_square_hash_first_letter(
+                &square(),
+                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+            ));
+        });
+    }
+
+    #[bench]
+    fn bench_solve_square_reverse_hash_first_letter(b: &mut Bencher) {
+        b.iter(|| {
+            assert_found_words(&solve_square_reverse_hash_first_letter(
+                &square(),
+                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+            ));
+        });
+    }
+
+    #[bench]
+    fn bench_solve_square_reverse_hash_first_two_letters(b: &mut Bencher) {
+        b.iter(|| {
+            assert_found_words(&solve_square_reverse_hash_first_two_letters(
                 &square(),
                 &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
             ));

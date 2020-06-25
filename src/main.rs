@@ -71,7 +71,7 @@ fn main() {
     println!("words: {:?}", words);
     print!("{}", square);
 
-    let found_words = solve_square_naive(&square, &words);
+    let found_words = solve_square_hash_first_letter(&square, &words);
 
     for w in &found_words {
         println!("{:?}", w);
