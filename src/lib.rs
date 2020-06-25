@@ -332,347 +332,187 @@ mod tests {
         .to_vec()
     }
 
-    #[bench]
-    fn bench_solve_square_naive(b: &mut Bencher) {
-        b.iter(|| {
-            let found_words = solve_square_naive(
-                &square(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            );
+    fn assert_found_words(found_words: &[WordLocation]) {
+        assert_eq!(found_words.len(), words().len());
 
-            assert_eq!(found_words.len(), words().len());
+        assert_eq!(
+            found_words[0],
+            WordLocation {
+                word: "anxious".to_string(),
+                start_cell: Cell { row: 10, col: 11 },
+                end_cell: Cell { row: 10, col: 5 },
+                direction: Direction::Left,
+            }
+        );
 
-            assert_eq!(
-                found_words[0],
-                WordLocation {
-                    word: "anxious".to_string(),
-                    start_cell: Cell { row: 10, col: 11 },
-                    end_cell: Cell { row: 10, col: 5 },
-                    direction: Direction::Left,
-                }
-            );
+        assert_eq!(
+            found_words[1],
+            WordLocation {
+                word: "border".to_string(),
+                start_cell: Cell { row: 5, col: 13 },
+                end_cell: Cell { row: 0, col: 8 },
+                direction: Direction::UpLeft,
+            }
+        );
 
-            assert_eq!(
-                found_words[1],
-                WordLocation {
-                    word: "border".to_string(),
-                    start_cell: Cell { row: 5, col: 13 },
-                    end_cell: Cell { row: 0, col: 8 },
-                    direction: Direction::UpLeft,
-                }
-            );
+        assert_eq!(
+            found_words[2],
+            WordLocation {
+                word: "coordinated".to_string(),
+                start_cell: Cell { row: 10, col: 4 },
+                end_cell: Cell { row: 0, col: 4 },
+                direction: Direction::Up,
+            }
+        );
 
-            assert_eq!(
-                found_words[2],
-                WordLocation {
-                    word: "coordinated".to_string(),
-                    start_cell: Cell { row: 10, col: 4 },
-                    end_cell: Cell { row: 0, col: 4 },
-                    direction: Direction::Up,
-                }
-            );
+        assert_eq!(
+            found_words[3],
+            WordLocation {
+                word: "follow".to_string(),
+                start_cell: Cell { row: 6, col: 3 },
+                end_cell: Cell { row: 1, col: 3 },
+                direction: Direction::Up,
+            }
+        );
 
-            assert_eq!(
-                found_words[3],
-                WordLocation {
-                    word: "follow".to_string(),
-                    start_cell: Cell { row: 6, col: 3 },
-                    end_cell: Cell { row: 1, col: 3 },
-                    direction: Direction::Up,
-                }
-            );
+        assert_eq!(
+            found_words[4],
+            WordLocation {
+                word: "guess".to_string(),
+                start_cell: Cell { row: 8, col: 13 },
+                end_cell: Cell { row: 12, col: 13 },
+                direction: Direction::Down,
+            }
+        );
 
-            assert_eq!(
-                found_words[4],
-                WordLocation {
-                    word: "guess".to_string(),
-                    start_cell: Cell { row: 8, col: 13 },
-                    end_cell: Cell { row: 12, col: 13 },
-                    direction: Direction::Down,
-                }
-            );
+        assert_eq!(
+            found_words[5],
+            WordLocation {
+                word: "hope".to_string(),
+                start_cell: Cell { row: 7, col: 3 },
+                end_cell: Cell { row: 7, col: 0 },
+                direction: Direction::Left,
+            }
+        );
 
-            assert_eq!(
-                found_words[5],
-                WordLocation {
-                    word: "hope".to_string(),
-                    start_cell: Cell { row: 7, col: 3 },
-                    end_cell: Cell { row: 7, col: 0 },
-                    direction: Direction::Left,
-                }
-            );
+        assert_eq!(
+            found_words[6],
+            WordLocation {
+                word: "impede".to_string(),
+                start_cell: Cell { row: 5, col: 4 },
+                end_cell: Cell { row: 0, col: 9 },
+                direction: Direction::UpRight,
+            }
+        );
 
-            assert_eq!(
-                found_words[6],
-                WordLocation {
-                    word: "impede".to_string(),
-                    start_cell: Cell { row: 5, col: 4 },
-                    end_cell: Cell { row: 0, col: 9 },
-                    direction: Direction::UpRight,
-                }
-            );
+        assert_eq!(
+            found_words[7],
+            WordLocation {
+                word: "initiate".to_string(),
+                start_cell: Cell { row: 0, col: 13 },
+                end_cell: Cell { row: 7, col: 6 },
+                direction: Direction::DownLeft,
+            }
+        );
 
-            assert_eq!(
-                found_words[7],
-                WordLocation {
-                    word: "initiate".to_string(),
-                    start_cell: Cell { row: 0, col: 13 },
-                    end_cell: Cell { row: 7, col: 6 },
-                    direction: Direction::DownLeft,
-                }
-            );
+        assert_eq!(
+            found_words[8],
+            WordLocation {
+                word: "instrument".to_string(),
+                start_cell: Cell { row: 12, col: 3 },
+                end_cell: Cell { row: 3, col: 12 },
+                direction: Direction::UpRight,
+            }
+        );
 
-            assert_eq!(
-                found_words[8],
-                WordLocation {
-                    word: "instrument".to_string(),
-                    start_cell: Cell { row: 12, col: 3 },
-                    end_cell: Cell { row: 3, col: 12 },
-                    direction: Direction::UpRight,
-                }
-            );
+        assert_eq!(
+            found_words[9],
+            WordLocation {
+                word: "mind".to_string(),
+                start_cell: Cell { row: 4, col: 8 },
+                end_cell: Cell { row: 1, col: 5 },
+                direction: Direction::UpLeft,
+            }
+        );
 
-            assert_eq!(
-                found_words[9],
-                WordLocation {
-                    word: "mind".to_string(),
-                    start_cell: Cell { row: 4, col: 8 },
-                    end_cell: Cell { row: 1, col: 5 },
-                    direction: Direction::UpLeft,
-                }
-            );
+        assert_eq!(
+            found_words[10],
+            WordLocation {
+                word: "nose".to_string(),
+                start_cell: Cell { row: 9, col: 3 },
+                end_cell: Cell { row: 12, col: 0 },
+                direction: Direction::DownLeft,
+            }
+        );
 
-            assert_eq!(
-                found_words[10],
-                WordLocation {
-                    word: "nose".to_string(),
-                    start_cell: Cell { row: 9, col: 3 },
-                    end_cell: Cell { row: 12, col: 0 },
-                    direction: Direction::DownLeft,
-                }
-            );
+        assert_eq!(
+            found_words[11],
+            WordLocation {
+                word: "plausible".to_string(),
+                start_cell: Cell { row: 13, col: 0 },
+                end_cell: Cell { row: 13, col: 8 },
+                direction: Direction::Right,
+            }
+        );
 
-            assert_eq!(
-                found_words[11],
-                WordLocation {
-                    word: "plausible".to_string(),
-                    start_cell: Cell { row: 13, col: 0 },
-                    end_cell: Cell { row: 13, col: 8 },
-                    direction: Direction::Right,
-                }
-            );
+        assert_eq!(
+            found_words[12],
+            WordLocation {
+                word: "prescribe".to_string(),
+                start_cell: Cell { row: 0, col: 6 },
+                end_cell: Cell { row: 8, col: 14 },
+                direction: Direction::DownRight,
+            }
+        );
 
-            assert_eq!(
-                found_words[12],
-                WordLocation {
-                    word: "prescribe".to_string(),
-                    start_cell: Cell { row: 0, col: 6 },
-                    end_cell: Cell { row: 8, col: 14 },
-                    direction: Direction::DownRight,
-                }
-            );
+        assert_eq!(
+            found_words[13],
+            WordLocation {
+                word: "recite".to_string(),
+                start_cell: Cell { row: 11, col: 5 },
+                end_cell: Cell { row: 11, col: 10 },
+                direction: Direction::Right,
+            }
+        );
 
-            assert_eq!(
-                found_words[13],
-                WordLocation {
-                    word: "recite".to_string(),
-                    start_cell: Cell { row: 11, col: 5 },
-                    end_cell: Cell { row: 11, col: 10 },
-                    direction: Direction::Right,
-                }
-            );
+        assert_eq!(
+            found_words[14],
+            WordLocation {
+                word: "robin".to_string(),
+                start_cell: Cell { row: 6, col: 6 },
+                end_cell: Cell { row: 10, col: 10 },
+                direction: Direction::DownRight,
+            }
+        );
 
-            assert_eq!(
-                found_words[14],
-                WordLocation {
-                    word: "robin".to_string(),
-                    start_cell: Cell { row: 6, col: 6 },
-                    end_cell: Cell { row: 10, col: 10 },
-                    direction: Direction::DownRight,
-                }
-            );
-
-            assert_eq!(
-                found_words[15],
-                WordLocation {
-                    word: "vivacious".to_string(),
-                    start_cell: Cell { row: 5, col: 12 },
-                    end_cell: Cell { row: 13, col: 12 },
-                    direction: Direction::Down,
-                }
-            );
-        });
+        assert_eq!(
+            found_words[15],
+            WordLocation {
+                word: "vivacious".to_string(),
+                start_cell: Cell { row: 5, col: 12 },
+                end_cell: Cell { row: 13, col: 12 },
+                direction: Direction::Down,
+            }
+        );
     }
 
     #[bench]
     fn bench_solve_square_reverse(b: &mut Bencher) {
         b.iter(|| {
-            let found_words = solve_square_reverse_words(
+            assert_found_words(&solve_square_reverse_words(
                 &square(),
                 &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            );
+            ));
+        });
+    }
 
-            assert_eq!(found_words.len(), words().len());
-
-            assert_eq!(
-                found_words[0],
-                WordLocation {
-                    word: "anxious".to_string(),
-                    start_cell: Cell { row: 10, col: 11 },
-                    end_cell: Cell { row: 10, col: 5 },
-                    direction: Direction::Left,
-                }
-            );
-
-            assert_eq!(
-                found_words[1],
-                WordLocation {
-                    word: "border".to_string(),
-                    start_cell: Cell { row: 5, col: 13 },
-                    end_cell: Cell { row: 0, col: 8 },
-                    direction: Direction::UpLeft,
-                }
-            );
-
-            assert_eq!(
-                found_words[2],
-                WordLocation {
-                    word: "coordinated".to_string(),
-                    start_cell: Cell { row: 10, col: 4 },
-                    end_cell: Cell { row: 0, col: 4 },
-                    direction: Direction::Up,
-                }
-            );
-
-            assert_eq!(
-                found_words[3],
-                WordLocation {
-                    word: "follow".to_string(),
-                    start_cell: Cell { row: 6, col: 3 },
-                    end_cell: Cell { row: 1, col: 3 },
-                    direction: Direction::Up,
-                }
-            );
-
-            assert_eq!(
-                found_words[4],
-                WordLocation {
-                    word: "guess".to_string(),
-                    start_cell: Cell { row: 8, col: 13 },
-                    end_cell: Cell { row: 12, col: 13 },
-                    direction: Direction::Down,
-                }
-            );
-
-            assert_eq!(
-                found_words[5],
-                WordLocation {
-                    word: "hope".to_string(),
-                    start_cell: Cell { row: 7, col: 3 },
-                    end_cell: Cell { row: 7, col: 0 },
-                    direction: Direction::Left,
-                }
-            );
-
-            assert_eq!(
-                found_words[6],
-                WordLocation {
-                    word: "impede".to_string(),
-                    start_cell: Cell { row: 5, col: 4 },
-                    end_cell: Cell { row: 0, col: 9 },
-                    direction: Direction::UpRight,
-                }
-            );
-
-            assert_eq!(
-                found_words[7],
-                WordLocation {
-                    word: "initiate".to_string(),
-                    start_cell: Cell { row: 0, col: 13 },
-                    end_cell: Cell { row: 7, col: 6 },
-                    direction: Direction::DownLeft,
-                }
-            );
-
-            assert_eq!(
-                found_words[8],
-                WordLocation {
-                    word: "instrument".to_string(),
-                    start_cell: Cell { row: 12, col: 3 },
-                    end_cell: Cell { row: 3, col: 12 },
-                    direction: Direction::UpRight,
-                }
-            );
-
-            assert_eq!(
-                found_words[9],
-                WordLocation {
-                    word: "mind".to_string(),
-                    start_cell: Cell { row: 4, col: 8 },
-                    end_cell: Cell { row: 1, col: 5 },
-                    direction: Direction::UpLeft,
-                }
-            );
-
-            assert_eq!(
-                found_words[10],
-                WordLocation {
-                    word: "nose".to_string(),
-                    start_cell: Cell { row: 9, col: 3 },
-                    end_cell: Cell { row: 12, col: 0 },
-                    direction: Direction::DownLeft,
-                }
-            );
-
-            assert_eq!(
-                found_words[11],
-                WordLocation {
-                    word: "plausible".to_string(),
-                    start_cell: Cell { row: 13, col: 0 },
-                    end_cell: Cell { row: 13, col: 8 },
-                    direction: Direction::Right,
-                }
-            );
-
-            assert_eq!(
-                found_words[12],
-                WordLocation {
-                    word: "prescribe".to_string(),
-                    start_cell: Cell { row: 0, col: 6 },
-                    end_cell: Cell { row: 8, col: 14 },
-                    direction: Direction::DownRight,
-                }
-            );
-
-            assert_eq!(
-                found_words[13],
-                WordLocation {
-                    word: "recite".to_string(),
-                    start_cell: Cell { row: 11, col: 5 },
-                    end_cell: Cell { row: 11, col: 10 },
-                    direction: Direction::Right,
-                }
-            );
-
-            assert_eq!(
-                found_words[14],
-                WordLocation {
-                    word: "robin".to_string(),
-                    start_cell: Cell { row: 6, col: 6 },
-                    end_cell: Cell { row: 10, col: 10 },
-                    direction: Direction::DownRight,
-                }
-            );
-
-            assert_eq!(
-                found_words[15],
-                WordLocation {
-                    word: "vivacious".to_string(),
-                    start_cell: Cell { row: 5, col: 12 },
-                    end_cell: Cell { row: 13, col: 12 },
-                    direction: Direction::Down,
-                }
-            );
+    #[bench]
+    fn bench_solve_square_naive(b: &mut Bencher) {
+        b.iter(|| {
+            assert_found_words(&solve_square_naive(
+                &square(),
+                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+            ));
         });
     }
 }
