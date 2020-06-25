@@ -14,6 +14,6 @@ fn main() {
     let found_words = solve_square(&square, &words);
     for w in found_words {
         println!("{:?}", w);
-        println!("{}", square.one_word_square(&w.start_cell, &w.end_cell));
+        println!("{}", square.one_word_square(&w));
     }
 }

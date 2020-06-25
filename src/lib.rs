@@ -14,40 +14,6 @@ pub struct Square {
     chars: Vec<Vec<char>>,
 }
 
-fn direction_between_cells(start_cell: &Cell, end_cell: &Cell) -> Direction {
-    let up = start_cell.row > end_cell.row;
-    let down = start_cell.row < end_cell.row;
-
-    let left = start_cell.col > end_cell.col;
-    let right = start_cell.col < end_cell.col;
-
-    if up {
-        if left {
-            return Direction::UpLeft;
-        } else if right {
-            return Direction::UpRight;
-        } else {
-            return Direction::Up;
-        }
-    } else if down {
-        if left {
-            return Direction::DownLeft;
-        } else if right {
-            return Direction::DownRight;
-        } else {
-            return Direction::Down;
-        }
-    } else {
-        if left {
-            return Direction::Left;
-        } else if right {
-            return Direction::Right;
-        } else {
-            panic!();
-        }
-    }
-}
-
 impl Square {
     pub fn new(chars: &[Vec<char>]) -> Square {
         Square {
@@ -55,27 +21,25 @@ impl Square {
         }
     }
 
-    pub fn one_word_square(&self, start_cell: &Cell, end_cell: &Cell) -> Square {
-        let direction = direction_between_cells(start_cell, end_cell);
-
+    pub fn one_word_square(&self, word: &WordLocation) -> Square {
         let mut square = Square::new(&vec![vec!['_'; self.cols()]; self.rows()]);
-        let mut cell = start_cell.to_owned();
+        let mut cell = word.start_cell.to_owned();
 
         let val = self.value_at_cell(&cell);
         square.set_value_at_cell(&cell, val);
 
-        while let Some(next_cell) = self.next_cell_in_direction(&cell, &direction) {
+        while let Some(next_cell) = self.next_cell_in_direction(&cell, &word.direction) {
             let val = self.value_at_cell(&cell);
             square.set_value_at_cell(&cell, val);
 
-            if next_cell == *end_cell {
+            if next_cell == word.end_cell {
                 break;
             }
             cell = next_cell
         }
 
-        let last_val = self.value_at_cell(&end_cell);
-        square.set_value_at_cell(&end_cell, last_val);
+        let last_val = self.value_at_cell(&word.end_cell);
+        square.set_value_at_cell(&word.end_cell, last_val);
 
         square
     }
