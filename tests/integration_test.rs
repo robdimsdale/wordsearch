@@ -7,9 +7,10 @@ fn test_square() {
         vec!['a', 'e', 'z'],
         vec!['n', 'o', 'w'],
     ]);
+
     let words = ["now", "pen", "tan", "top"];
 
-    let found_words = solve_square(&square, &words);
+    let found_words = solve_square_naive(&square, &words);
 
     assert_eq!(found_words.len(), 4);
 
