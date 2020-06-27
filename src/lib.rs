@@ -4,9 +4,12 @@ extern crate test;
 
 use itertools::iproduct;
 use itertools::Itertools;
+use rand::prelude::{IteratorRandom, SliceRandom, ThreadRng};
 use std::collections::HashSet;
 use std::fmt;
 use std::slice::Iter;
+
+const EMPTY_CHAR: char = '_';
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Cell {
@@ -14,12 +17,15 @@ pub struct Cell {
     pub col: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Square {
     chars: Vec<Vec<char>>,
 }
 
 impl Square {
+    pub fn empty(row_count: usize, col_count: usize) -> Square {
+        Square::new(&vec![vec![EMPTY_CHAR; col_count]; row_count])
+    }
     pub fn new(chars: &[Vec<char>]) -> Square {
         Square {
             chars: chars.to_owned(),
@@ -27,7 +33,7 @@ impl Square {
     }
 
     pub fn one_word_square(&self, word: &WordLocation) -> Square {
-        let mut square = Square::new(&vec![vec!['_'; self.cols()]; self.rows()]);
+        let mut square = Square::new(&vec![vec![EMPTY_CHAR; self.col_count()]; self.row_count()]);
         let mut cell = word.start_cell.to_owned();
 
         let val = self.value_at_cell(&cell);
@@ -49,11 +55,15 @@ impl Square {
         square
     }
 
-    fn rows(&self) -> usize {
+    pub fn rows(&self) -> &Vec<Vec<char>> {
+        &self.chars
+    }
+
+    pub fn row_count(&self) -> usize {
         self.chars.len()
     }
 
-    fn cols(&self) -> usize {
+    pub fn col_count(&self) -> usize {
         if self.chars.is_empty() {
             0
         } else {
@@ -61,8 +71,33 @@ impl Square {
         }
     }
 
+    // Will clobber any existing chars
+    fn add_word_at_location(&mut self, wl: &WordLocation) {
+        let mut cell = wl.start_cell;
+        for (i, c) in wl.word.chars().enumerate() {
+            self.set_value_at_cell(&cell, c);
+
+            if i == wl.word.len() - 1 {
+                return;
+            }
+
+            cell = self.next_cell_in_direction(&cell, &wl.direction).unwrap();
+        }
+    }
+
     fn set_value_at_cell(&mut self, cell: &Cell, val: char) {
         self.chars[cell.row][cell.col] = val;
+    }
+
+    fn fill_empty_cells_with_chars(&mut self, rng: &mut ThreadRng) {
+        for r in 0..self.chars.len() {
+            for c in 0..self.chars[r].len() {
+                if self.chars[r][c] == EMPTY_CHAR {
+                    let ch = ('a'..'z').choose(rng).unwrap();
+                    self.chars[r][c] = ch;
+                }
+            }
+        }
     }
 
     fn value_at_cell(&self, cell: &Cell) -> char {
@@ -82,7 +117,11 @@ impl Square {
             Direction::UpLeft => (cell.row as isize - 1, cell.col as isize - 1),
         };
 
-        if row < 0 || col < 0 || row as usize >= self.rows() || col as usize >= self.cols() {
+        if row < 0
+            || col < 0
+            || row as usize >= self.row_count()
+            || col as usize >= self.col_count()
+        {
             return None;
         }
 
@@ -142,6 +181,154 @@ impl Direction {
     }
 }
 
+pub fn generate_square(rows: usize, cols: usize, words: &[&str]) -> Square {
+    let mut rng = rand::thread_rng();
+
+    if words.is_empty() {
+        panic!("no words provided!")
+    }
+
+    // reverse word list so we can push/pop easily and yet still preserve initial ordering
+    let mut word_list = words
+        .iter()
+        .map(|w| w.to_owned().to_owned())
+        .collect::<Vec<_>>();
+
+    word_list.sort_by(|a, b| a.len().cmp(&b.len()));
+
+    word_list.reverse();
+
+    struct StackEntry {
+        square: Square,
+        word: String,
+        remaining_possible_directions: Vec<Direction>,
+        remaining_possible_positions: Vec<Cell>,
+    }
+
+    let cells = iproduct!(0..rows, 0..cols)
+        .map(|(r, c)| Cell { row: r, col: c })
+        .collect::<Vec<_>>();
+
+    let directions = Direction::iterator()
+        .map(|d| d.to_owned())
+        .collect::<Vec<_>>();
+
+    let mut positions = cells.clone();
+    positions.shuffle(&mut rng);
+    let mut ds = directions.clone();
+    ds.shuffle(&mut rng);
+
+    let mut stack = vec![StackEntry {
+        square: Square::empty(rows, cols),
+        word: word_list.pop().unwrap(),
+        remaining_possible_directions: ds,
+        remaining_possible_positions: positions,
+    }];
+
+    loop {
+        let mut current = match stack.last_mut() {
+            Some(c) => c,
+            None => panic!("No more stacks"),
+        };
+
+        // Get the next direction to try
+        let dir = match current.remaining_possible_directions.pop() {
+            Some(d) => d,
+            None => {
+                // If we've tried all the possible directions at this position,
+                // pop the current position off and reset the list of directions,
+                current.remaining_possible_positions.pop();
+
+                let mut ds = directions.clone();
+                ds.shuffle(&mut rng);
+                current.remaining_possible_directions = ds;
+                current.remaining_possible_directions.pop().unwrap() // we just refreshed the list so we know we can pop.
+            }
+        };
+
+        // Get the position in the grid that we're trying the word against
+        match current.remaining_possible_positions.last() {
+            Some(p) => {
+                if let Some(mut word_location) = place_word_at_cell(
+                    &current.square,
+                    &p,
+                    &dir,
+                    &current.word.chars().collect_vec(),
+                ) {
+                    word_location.word = current.word.clone();
+                    word_location.start_cell = *p;
+
+                    let mut square = current.square.clone();
+                    square.add_word_at_location(&word_location);
+                    if !word_list.is_empty() {
+                        let mut cs = cells.clone();
+                        cs.shuffle(&mut rng);
+
+                        let mut ds = directions.clone();
+                        ds.shuffle(&mut rng);
+
+                        stack.push(StackEntry {
+                            square,
+                            word: word_list.pop().unwrap(), // We already checked word_list wasn't empty.
+                            remaining_possible_directions: ds,
+                            remaining_possible_positions: cs,
+                        });
+                    } else {
+                        square.fill_empty_cells_with_chars(&mut rng);
+                        return square;
+                    }
+                } else {
+                    // TODO: explain why we don't care about this
+                }
+            }
+            None => {
+                // If there are no more available positions,
+                // put the current word back in the vocab list and backtrack by popping the stack.
+                // println!(
+                //     "No more positions to try for word '{}' - trying again",
+                //     &current.word
+                // );
+                word_list.push(current.word.clone());
+                stack.pop();
+            }
+        };
+    }
+}
+
+fn place_word_at_cell(
+    square: &Square,
+    cell: &Cell,
+    direction: &Direction,
+    word_chars: &[char],
+) -> Option<WordLocation> {
+    let c = word_chars[0];
+    let char_at_cell = square.value_at_cell(&cell);
+
+    if char_at_cell != EMPTY_CHAR && char_at_cell != c {
+        return None;
+    }
+
+    if word_chars.len() == 1 {
+        return Some(WordLocation {
+            word: "".to_string(),
+            start_cell: *cell,
+            end_cell: *cell,
+            direction: *direction,
+        });
+    }
+
+    return if let Some(next_cell) = square.next_cell_in_direction(cell, direction) {
+        place_word_at_cell(
+            square,
+            &next_cell,
+            direction,
+            &word_chars[1..word_chars.len()],
+        )
+    } else {
+        None
+    };
+}
+
 pub fn solve_square_reverse_hash_first_two_letters(
     square: &Square,
     words: &[&str],
@@ -174,7 +361,11 @@ pub fn solve_square_reverse_hash_first_two_letters(
 
     let mut word_locations = Vec::new();
 
-    for (row, col, direction) in iproduct!(0..square.rows(), 0..square.cols(), directions.iter()) {
+    for (row, col, direction) in iproduct!(
+        0..square.row_count(),
+        0..square.col_count(),
+        directions.iter()
+    ) {
         let cell = Cell { row, col };
         if let Some(found) =
             find_word_in_direction_hash(vec![cell], &direction, square, &all_words, &hashed, 2)
@@ -234,9 +425,13 @@ pub fn solve_square_reverse_hash_first_letter(
 
     let mut word_locations = Vec::new();
 
-    for (row, col, direction) in iproduct!(0..square.rows(), 0..square.cols(), directions.iter()) {
+    for (row, col, direction) in iproduct!(
+        0..square.row_count(),
+        0..square.col_count(),
+        directions.iter()
+    ) {
         let cell = Cell { row, col };
-        if let Some(_) = hashed.get(&square.value_at_cell(&cell)) {
+        if hashed.contains(&square.value_at_cell(&cell)) {
             let cell = Cell { row, col };
             if let Some(found) = find_word_in_direction(vec![cell], &direction, square, &all_words)
             {
@@ -273,9 +468,11 @@ pub fn solve_square_hash_first_letter(square: &Square, words: &[&str]) -> Vec<Wo
 
     let mut word_locations = Vec::new();
 
-    for (row, col, direction) in
-        iproduct!(0..square.rows(), 0..square.cols(), Direction::iterator())
-    {
+    for (row, col, direction) in iproduct!(
+        0..square.row_count(),
+        0..square.col_count(),
+        Direction::iterator()
+    ) {
         let cell = Cell { row, col };
         if hashed.contains(&square.value_at_cell(&cell)) {
             if let Some(found) = find_word_in_direction(vec![cell], &direction, square, words) {
@@ -296,9 +493,11 @@ pub fn solve_square_hash_first_letter(square: &Square, words: &[&str]) -> Vec<Wo
 pub fn solve_square_naive(square: &Square, words: &[&str]) -> Vec<WordLocation> {
     let mut word_locations = Vec::new();
 
-    for (row, col, direction) in
-        iproduct!(0..square.rows(), 0..square.cols(), Direction::iterator())
-    {
+    for (row, col, direction) in iproduct!(
+        0..square.row_count(),
+        0..square.col_count(),
+        Direction::iterator()
+    ) {
         let cell = Cell { row, col };
         if let Some(found) = find_word_in_direction(vec![cell], &direction, square, words) {
             word_locations.push(WordLocation {
@@ -337,7 +536,11 @@ pub fn solve_square_reverse_words(square: &Square, words: &[&str]) -> Vec<WordLo
         Direction::Down,
     ];
 
-    for (row, col, direction) in iproduct!(0..square.rows(), 0..square.cols(), directions.iter()) {
+    for (row, col, direction) in iproduct!(
+        0..square.row_count(),
+        0..square.col_count(),
+        directions.iter()
+    ) {
         let cell = Cell { row, col };
         if let Some(found) = find_word_in_direction(vec![cell], &direction, square, &all_words) {
             let w: WordLocation;
@@ -387,15 +590,15 @@ fn find_word_in_direction_hash(
 ) -> Option<WordLocation> {
     let current_cell = cells[cells.len() - 1];
 
-    if cells.len() == hashed_length {
-        if !hashed.contains(
+    if cells.len() == hashed_length
+        && !hashed.contains(
             &cells
                 .iter()
                 .map(|c| square.value_at_cell(&c))
                 .collect::<Vec<char>>(),
-        ) {
-            return None;
-        }
+        )
+    {
+        return None;
     }
 
     let maybe_word = cells
@@ -405,7 +608,7 @@ fn find_word_in_direction_hash(
 
     if words.contains(&maybe_word.as_str()) {
         return Some(WordLocation {
-            word: maybe_word.to_string(),
+            word: maybe_word,
             start_cell: cells[0],
             end_cell: cells[cells.len() - 1],
             direction: direction.to_owned(),
@@ -435,7 +638,7 @@ fn find_word_in_direction(
 
     if words.contains(&maybe_word.as_str()) {
         return Some(WordLocation {
-            word: maybe_word.to_string(),
+            word: maybe_word,
             start_cell: cells[0],
             end_cell: cells[cells.len() - 1],
             direction: direction.to_owned(),
@@ -738,6 +941,50 @@ mod tests {
                 &square(),
                 &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
             ));
+        });
+    }
+
+    #[bench]
+    fn bench_create_2x2(b: &mut Bencher) {
+        b.iter(|| {
+            let words2 = ["if", "it", "to"];
+
+            let valid_squares = vec![
+                Square::new(&[vec!['i', 'f'], vec!['t', 'o']]),
+                Square::new(&[vec!['i', 'f'], vec!['o', 't']]),
+                Square::new(&[vec!['i', 't'], vec!['o', 'f']]),
+                Square::new(&[vec!['i', 't'], vec!['f', 'o']]),
+                Square::new(&[vec!['i', 'o'], vec!['t', 'f']]),
+                Square::new(&[vec!['i', 'o'], vec!['f', 't']]),
+                Square::new(&[vec!['f', 'i'], vec!['t', 'o']]),
+                Square::new(&[vec!['f', 'i'], vec!['o', 't']]),
+                Square::new(&[vec!['f', 'o'], vec!['t', 'i']]),
+                Square::new(&[vec!['f', 'o'], vec!['i', 't']]),
+                Square::new(&[vec!['f', 't'], vec!['o', 'i']]),
+                Square::new(&[vec!['f', 't'], vec!['i', 'o']]),
+                Square::new(&[vec!['t', 'i'], vec!['o', 'f']]),
+                Square::new(&[vec!['t', 'i'], vec!['f', 'o']]),
+                Square::new(&[vec!['t', 'o'], vec!['i', 'f']]),
+                Square::new(&[vec!['t', 'o'], vec!['f', 'i']]),
+                Square::new(&[vec!['t', 'f'], vec!['o', 'i']]),
+                Square::new(&[vec!['t', 'f'], vec!['i', 'o']]),
+                Square::new(&[vec!['o', 'i'], vec!['t', 'f']]),
+                Square::new(&[vec!['o', 'i'], vec!['f', 't']]),
+                Square::new(&[vec!['o', 't'], vec!['i', 'f']]),
+                Square::new(&[vec!['o', 't'], vec!['f', 'i']]),
+                Square::new(&[vec!['o', 'f'], vec!['t', 'i']]),
+                Square::new(&[vec!['o', 'f'], vec!['i', 't']]),
+            ];
+
+            let square2 = generate_square(2, 2, &words2);
+            assert!(valid_squares.contains(&square2));
+
+            let found_words2 = solve_square_naive(&square2, &words2);
+            assert_eq!(found_words2.len(), words2.len());
+
+            for (w, fw) in words2.iter().zip(found_words2.iter()) {
+                assert_eq!(fw.word, **w);
+            }
         });
     }
 }
