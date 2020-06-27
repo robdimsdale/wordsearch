@@ -1,39 +1,39 @@
 use wordsearch::*;
 
 #[test]
-fn test_generate_square() {
+fn test_generate_grid() {
     let words2 = ["if", "it", "to"];
-    let valid_squares = vec![
-        Square::new(&[vec!['i', 'f'], vec!['t', 'o']]),
-        Square::new(&[vec!['i', 'f'], vec!['o', 't']]),
-        Square::new(&[vec!['i', 't'], vec!['o', 'f']]),
-        Square::new(&[vec!['i', 't'], vec!['f', 'o']]),
-        Square::new(&[vec!['i', 'o'], vec!['t', 'f']]),
-        Square::new(&[vec!['i', 'o'], vec!['f', 't']]),
-        Square::new(&[vec!['f', 'i'], vec!['t', 'o']]),
-        Square::new(&[vec!['f', 'i'], vec!['o', 't']]),
-        Square::new(&[vec!['f', 'o'], vec!['t', 'i']]),
-        Square::new(&[vec!['f', 'o'], vec!['i', 't']]),
-        Square::new(&[vec!['f', 't'], vec!['o', 'i']]),
-        Square::new(&[vec!['f', 't'], vec!['i', 'o']]),
-        Square::new(&[vec!['t', 'i'], vec!['o', 'f']]),
-        Square::new(&[vec!['t', 'i'], vec!['f', 'o']]),
-        Square::new(&[vec!['t', 'o'], vec!['i', 'f']]),
-        Square::new(&[vec!['t', 'o'], vec!['f', 'i']]),
-        Square::new(&[vec!['t', 'f'], vec!['o', 'i']]),
-        Square::new(&[vec!['t', 'f'], vec!['i', 'o']]),
-        Square::new(&[vec!['o', 'i'], vec!['t', 'f']]),
-        Square::new(&[vec!['o', 'i'], vec!['f', 't']]),
-        Square::new(&[vec!['o', 't'], vec!['i', 'f']]),
-        Square::new(&[vec!['o', 't'], vec!['f', 'i']]),
-        Square::new(&[vec!['o', 'f'], vec!['t', 'i']]),
-        Square::new(&[vec!['o', 'f'], vec!['i', 't']]),
+    let valid_grids = vec![
+        Grid::new(&[vec!['i', 'f'], vec!['t', 'o']]),
+        Grid::new(&[vec!['i', 'f'], vec!['o', 't']]),
+        Grid::new(&[vec!['i', 't'], vec!['o', 'f']]),
+        Grid::new(&[vec!['i', 't'], vec!['f', 'o']]),
+        Grid::new(&[vec!['i', 'o'], vec!['t', 'f']]),
+        Grid::new(&[vec!['i', 'o'], vec!['f', 't']]),
+        Grid::new(&[vec!['f', 'i'], vec!['t', 'o']]),
+        Grid::new(&[vec!['f', 'i'], vec!['o', 't']]),
+        Grid::new(&[vec!['f', 'o'], vec!['t', 'i']]),
+        Grid::new(&[vec!['f', 'o'], vec!['i', 't']]),
+        Grid::new(&[vec!['f', 't'], vec!['o', 'i']]),
+        Grid::new(&[vec!['f', 't'], vec!['i', 'o']]),
+        Grid::new(&[vec!['t', 'i'], vec!['o', 'f']]),
+        Grid::new(&[vec!['t', 'i'], vec!['f', 'o']]),
+        Grid::new(&[vec!['t', 'o'], vec!['i', 'f']]),
+        Grid::new(&[vec!['t', 'o'], vec!['f', 'i']]),
+        Grid::new(&[vec!['t', 'f'], vec!['o', 'i']]),
+        Grid::new(&[vec!['t', 'f'], vec!['i', 'o']]),
+        Grid::new(&[vec!['o', 'i'], vec!['t', 'f']]),
+        Grid::new(&[vec!['o', 'i'], vec!['f', 't']]),
+        Grid::new(&[vec!['o', 't'], vec!['i', 'f']]),
+        Grid::new(&[vec!['o', 't'], vec!['f', 'i']]),
+        Grid::new(&[vec!['o', 'f'], vec!['t', 'i']]),
+        Grid::new(&[vec!['o', 'f'], vec!['i', 't']]),
     ];
 
-    let square2 = generate_square(2, 2, &words2);
-    assert!(valid_squares.contains(&square2));
+    let grid2 = generate_grid(2, 2, &words2);
+    assert!(valid_grids.contains(&grid2));
 
-    let found_words2 = solve_square_naive(&square2, &words2);
+    let found_words2 = solve_grid_naive(&grid2, &words2);
     assert_eq!(found_words2.len(), words2.len());
 
     for (w, fw) in words2.iter().zip(found_words2.iter()) {
@@ -41,12 +41,12 @@ fn test_generate_square() {
     }
 
     let words3 = ["now", "pen", "tan", "top"];
-    let square3 = generate_square(3, 3, &words3);
+    let grid3 = generate_grid(3, 3, &words3);
 
-    assert_eq!(square3.col_count(), 3);
-    assert_eq!(square3.row_count(), 3);
+    assert_eq!(grid3.col_count(), 3);
+    assert_eq!(grid3.row_count(), 3);
 
-    let found_words3 = solve_square_naive(&square3, &words3);
+    let found_words3 = solve_grid_naive(&grid3, &words3);
 
     assert_eq!(found_words3.len(), words3.len());
 
@@ -55,12 +55,12 @@ fn test_generate_square() {
     }
 
     let words3x4 = ["pin", "post", "sit", "tent", "tie"];
-    let square3x4 = generate_square(3, 4, &words3x4);
+    let grid3x4 = generate_grid(3, 4, &words3x4);
 
-    assert_eq!(square3x4.col_count(), 4);
-    assert_eq!(square3x4.row_count(), 3);
+    assert_eq!(grid3x4.col_count(), 4);
+    assert_eq!(grid3x4.row_count(), 3);
 
-    let found_words3x4 = solve_square_naive(&square3x4, &words3x4);
+    let found_words3x4 = solve_grid_naive(&grid3x4, &words3x4);
 
     assert_eq!(found_words3x4.len(), words3x4.len());
 
@@ -70,8 +70,8 @@ fn test_generate_square() {
 }
 
 #[test]
-fn test_solve_square() {
-    let square = Square::new(&vec![
+fn test_solve_grid() {
+    let grid = Grid::new(&vec![
         vec!['t', 'o', 'p'],
         vec!['a', 'e', 'z'],
         vec!['n', 'o', 'w'],
@@ -79,13 +79,12 @@ fn test_solve_square() {
 
     let words = ["now", "pen", "tan", "top"];
 
-    let found_words_naive = solve_square_naive(&square, &words);
-    let found_words_hash_first_letter = solve_square_hash_first_letter(&square, &words);
-    let found_words_reverse = solve_square_reverse_words(&square, &words);
-    let found_words_reverse_hash_first_letter =
-        solve_square_reverse_hash_first_letter(&square, &words);
+    let found_words_naive = solve_grid_naive(&grid, &words);
+    let found_words_hash_first_letter = solve_grid_hash_first_letter(&grid, &words);
+    let found_words_reverse = solve_grid_reverse_words(&grid, &words);
+    let found_words_reverse_hash_first_letter = solve_grid_reverse_hash_first_letter(&grid, &words);
     let found_words_reverse_hash_first_two_letter =
-        solve_square_reverse_hash_first_two_letters(&square, &words);
+        solve_grid_reverse_hash_first_two_letters(&grid, &words);
 
     assert_eq!(found_words_naive, found_words_hash_first_letter);
     assert_eq!(found_words_naive, found_words_reverse);

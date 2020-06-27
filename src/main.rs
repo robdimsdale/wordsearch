@@ -22,16 +22,16 @@ fn main() {
         "stress",
         "vivacious",
     ];
-    let square = generate_square(14, 13, &words);
+    let grid = generate_grid(14, 13, &words);
 
     println!("words: {:?}", words);
-    print!("{}", square);
+    print!("{}", grid);
 
-    let found_words = solve_square_hash_first_letter(&square, &words);
+    let found_words = solve_grid_hash_first_letter(&grid, &words);
 
     for w in &found_words {
         println!("{:?}", w);
-        println!("{}", square.one_word_square(&w));
+        println!("{}", grid.one_word_grid(&w));
     }
 
     assert_eq!(found_words.len(), words.len());
