@@ -1,5 +1,5 @@
-# wordsquare
-Solve wordsquares
+# wordsearch
+Generate and solve wordsearches
 
 ## Benchmarks
 

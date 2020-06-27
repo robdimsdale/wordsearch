@@ -1,4 +1,4 @@
-use wordsquare::*;
+use wordsearch::*;
 
 fn main() {
     let words = [

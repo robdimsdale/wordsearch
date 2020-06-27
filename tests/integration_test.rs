@@ -1,4 +1,4 @@
-use wordsquare::*;
+use wordsearch::*;
 
 #[test]
 fn test_generate_square() {
