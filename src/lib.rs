@@ -281,14 +281,7 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
         // Get the position in the grid that we're trying the word against
         match current.remaining_possible_positions.last() {
             Some(p) => {
-                if let Some(mut word_location) =
-                    place_word_at_cell(&current.grid, &p, &dir, &current.word.chars().collect_vec())
-                {
-                    word_location.word = current.word.clone();
-                    word_location.start_cell = *p;
-
-                    let mut grid = current.grid.clone();
-                    grid.add_word_at_location(&word_location);
+                if let Some(mut grid) = place_word_at_cell(&current.grid, &p, &dir, &current.word) {
                     if !word_list.is_empty() {
                         let mut cs = cells.clone();
                         cs.shuffle(&mut rng);
@@ -326,39 +319,40 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
 
 fn place_word_at_cell(
     grid: &Grid,
-    cell: &Cell,
+    start_cell: &Cell,
     direction: &Direction,
-    word_chars: &[char],
-) -> Option<WordLocation> {
+    word: &str,
+) -> Option<Grid> {
     // +1 to account for the current cell.
-    if grid.cells_remaining_in_direction(cell, direction) + 1 < word_chars.len() {
+    if grid.cells_remaining_in_direction(&start_cell, direction) + 1 < word.len() {
         return None;
     }
 
-    let c = word_chars[0];
-    let char_at_cell = grid.value_at_cell(&cell);
+    let mut cell: Cell = start_cell.to_owned();
 
-    if char_at_cell != EMPTY_CHAR && char_at_cell != c {
-        return None;
+    for (i, c) in word.chars().enumerate() {
+        let char_at_cell = grid.value_at_cell(&cell);
+
+        if char_at_cell != EMPTY_CHAR && char_at_cell != c {
+            return None;
+        }
+
+        let remaining_chars = word.len() - i;
+        if remaining_chars > 1 {
+            cell = grid.next_cell_in_direction(&cell, direction)?;
+        }
     }
 
-    if word_chars.len() == 1 {
-        return Some(WordLocation {
-            word: "".to_string(),
-            start_cell: *cell,
-            end_cell: *cell,
-            direction: *direction,
-        });
-    }
+    let mut g = grid.clone();
 
-    let next_cell = grid.next_cell_in_direction(cell, direction)?;
+    g.add_word_at_location(&WordLocation {
+        word: word.to_owned(),
+        start_cell: *start_cell,
+        end_cell: cell,
+        direction: *direction,
+    });
 
-    place_word_at_cell(
-        grid,
-        &next_cell,
-        direction,
-        &word_chars[1..word_chars.len()],
-    )
+    Some(g)
 }
 
 fn random_char(rng: &mut ThreadRng) -> char {
