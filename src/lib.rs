@@ -193,7 +193,7 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
         .collect::<Vec<_>>();
 
     // sort word list by longest words first to fit faster.
-    word_list.sort_by(|a, b| a.len().cmp(&b.len()));
+    word_list.sort_by_key(|a| a.len());
 
     // reverse word list so we can push/pop easily and yet still preserve initial ordering
     word_list.reverse();
@@ -365,22 +365,21 @@ pub fn solve_grid_reverse_hash_first_two_letters(grid: &Grid, words: &[&str]) ->
         if let Some(found) =
             find_word_in_direction_hash(vec![cell], &direction, grid, &all_words, &hashed, 2)
         {
-            let w: WordLocation;
-            if words.contains(&found.word.as_str()) {
-                w = WordLocation {
+            let w: WordLocation = if words.contains(&found.word.as_str()) {
+                WordLocation {
                     word: found.word,
                     start_cell: found.start_cell,
                     end_cell: found.end_cell,
                     direction: found.direction,
-                };
+                }
             } else {
-                w = WordLocation {
+                WordLocation {
                     word: found.word.to_string().chars().rev().collect::<String>(),
                     start_cell: found.end_cell,
                     end_cell: found.start_cell,
                     direction: opposite_direction(&found.direction),
-                };
-            }
+                }
+            };
             word_locations.push(w);
         }
     }
