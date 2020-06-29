@@ -74,6 +74,10 @@ impl Grid {
     // Will clobber any existing chars
     // Panics if word does not fit
     fn add_word_at_location(&mut self, wl: &WordLocation) {
+        if self.cells_remaining_in_direction(&wl.start_cell, &wl.direction) + 1 < wl.word.len() {
+            panic!("Not enough cells remain to place word: {}", wl.word);
+        }
+
         let mut cell = wl.start_cell;
         for (i, c) in wl.word.chars().enumerate() {
             self.set_value_at_cell(&cell, c);
@@ -82,7 +86,7 @@ impl Grid {
                 return;
             }
 
-            cell = self.next_cell_in_direction(&cell, &wl.direction).unwrap();
+            cell = self.next_cell_in_direction(&cell, &wl.direction).unwrap(); // We have already validated that there are enough cells to place the word.
         }
     }
 
@@ -212,30 +216,20 @@ impl Direction {
     }
 }
 
-pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
+pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
     let mut rng = rand::thread_rng();
 
     if words.is_empty() {
-        panic!("no words provided!")
+        return None;
     }
 
-    let mut word_list = words
-        .iter()
-        .map(|w| w.to_owned().to_owned())
-        .collect::<Vec<_>>();
+    let mut word_list = words.iter().map(|w| w.to_string()).collect::<Vec<_>>();
 
     // sort word list by longest words first to fit faster.
     word_list.sort_by_key(|a| a.len());
 
     // reverse word list so we can push/pop easily and yet still preserve initial ordering
     word_list.reverse();
-
-    struct StackEntry {
-        grid: Grid,
-        word: String,
-        remaining_possible_directions: Vec<Direction>,
-        remaining_possible_positions: Vec<Cell>,
-    }
 
     let cells = iproduct!(0..rows, 0..cols)
         .map(|(r, c)| Cell { row: r, col: c })
@@ -245,31 +239,57 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
         .map(|d| d.to_owned())
         .collect::<Vec<_>>();
 
-    let mut positions = cells.clone();
-    positions.shuffle(&mut rng);
-    let mut ds = directions.clone();
-    ds.shuffle(&mut rng);
+    struct StackEntry {
+        grid: Grid,
+        word: String,
+        remaining_possible_directions: Vec<Direction>,
+        remaining_possible_cells: Vec<Cell>,
+    }
 
-    let mut stack = vec![StackEntry {
-        grid: Grid::empty(rows, cols),
-        word: word_list.pop().unwrap(),
-        remaining_possible_directions: ds,
-        remaining_possible_positions: positions,
-    }];
+    impl StackEntry {
+        /// Shuffles cells and directions with provided ThreadRng
+        fn new_with_shuffle(
+            grid: Grid,
+            word: &str,
+            cells: &[Cell],
+            directions: &[Direction],
+            rng: &mut ThreadRng,
+        ) -> Self {
+            let mut ps = cells.to_vec();
+            ps.shuffle(rng);
+            let mut ds = directions.to_vec();
+            ds.shuffle(rng);
+
+            StackEntry {
+                grid,
+                word: word.to_owned(),
+                remaining_possible_directions: ds,
+                remaining_possible_cells: ps,
+            }
+        }
+    }
+
+    let mut stack = vec![StackEntry::new_with_shuffle(
+        Grid::empty(rows, cols),
+        &word_list.pop().unwrap(), // We know there is at least one word.
+        cells.as_slice(),
+        directions.as_slice(),
+        &mut rng,
+    )];
 
     loop {
         let mut current = match stack.last_mut() {
             Some(c) => c,
-            None => panic!("No more stacks"),
+            None => return None,
         };
 
         // Get the next direction to try
-        let dir = match current.remaining_possible_directions.pop() {
+        let direction = match current.remaining_possible_directions.pop() {
             Some(d) => d,
             None => {
                 // If we've tried all the possible directions at this position,
                 // pop the current position off and reset the list of directions,
-                current.remaining_possible_positions.pop();
+                current.remaining_possible_cells.pop();
 
                 let mut ds = directions.clone();
                 ds.shuffle(&mut rng);
@@ -279,25 +299,22 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
         };
 
         // Get the position in the grid that we're trying the word against
-        match current.remaining_possible_positions.last() {
+        match current.remaining_possible_cells.last() {
             Some(p) => {
-                if let Some(mut grid) = place_word_at_cell(&current.grid, &p, &dir, &current.word) {
-                    if !word_list.is_empty() {
-                        let mut cs = cells.clone();
-                        cs.shuffle(&mut rng);
-
-                        let mut ds = directions.clone();
-                        ds.shuffle(&mut rng);
-
-                        stack.push(StackEntry {
+                if let Some(mut grid) =
+                    place_word_at_cell(&current.grid, &p, &direction, &current.word)
+                {
+                    if let Some(w) = word_list.pop() {
+                        stack.push(StackEntry::new_with_shuffle(
                             grid,
-                            word: word_list.pop().unwrap(), // We already checked word_list wasn't empty.
-                            remaining_possible_directions: ds,
-                            remaining_possible_positions: cs,
-                        });
+                            &w,
+                            cells.as_slice(),
+                            directions.as_slice(),
+                            &mut rng,
+                        ));
                     } else {
                         grid.fill_empty_cells_with_chars(&mut rng);
-                        return grid;
+                        return Some(grid);
                     }
                 } else {
                     // TODO: explain why we don't care about this
@@ -306,10 +323,6 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
             None => {
                 // If there are no more available positions,
                 // put the current word back in the vocab list and backtrack by popping the stack.
-                // println!(
-                //     "No more positions to try for word '{}' - trying again",
-                //     &current.word
-                // );
                 word_list.push(current.word.clone());
                 stack.pop();
             }
@@ -384,7 +397,7 @@ pub fn solve_grid_reverse_hash_first_two_letters(grid: &Grid, words: &[&str]) ->
     let mut hashed: HashSet<Vec<char>> = HashSet::new();
     for w in all_words.iter() {
         let mut chars = w.chars();
-        hashed.insert(vec![chars.next().unwrap(), chars.next().unwrap()]);
+        hashed.insert(vec![chars.next().unwrap(), chars.next().unwrap()]); // We expect that all words are at least two chars long.
     }
 
     let mut word_locations = Vec::new();
@@ -440,7 +453,7 @@ pub fn solve_grid_reverse_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<
 
     let mut hashed: HashSet<char> = HashSet::new();
     for w in all_words.iter() {
-        hashed.insert(w.chars().next().unwrap());
+        hashed.insert(w.chars().next().unwrap()); // We expect that all words are at least one char long.
     }
 
     let mut word_locations = Vec::new();
@@ -477,7 +490,7 @@ pub fn solve_grid_reverse_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<
 pub fn solve_grid_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<WordLocation> {
     let mut hashed: HashSet<char> = HashSet::new();
     for w in words.iter() {
-        hashed.insert(w.chars().next().unwrap());
+        hashed.insert(w.chars().next().unwrap()); // We expect that all words are at least one char long.
     }
 
     let mut word_locations = Vec::new();
@@ -967,7 +980,7 @@ mod tests {
             Grid::new(&[vec!['o', 'f'], vec!['i', 't']]),
         ];
 
-        let grid2 = generate_grid(2, 2, &words2);
+        let grid2 = generate_grid(2, 2, &words2).unwrap();
         assert!(valid_grids.contains(&grid2));
 
         let found_words2 = solve_grid_naive(&grid2, &words2);

@@ -22,7 +22,7 @@ fn main() {
         "stress",
         "vivacious",
     ];
-    let grid = generate_grid(15, 15, &words);
+    let grid = generate_grid(15, 15, &words).unwrap();
 
     println!("words: {:?}", words);
     print!("{}", grid);

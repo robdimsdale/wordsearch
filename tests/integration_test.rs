@@ -30,7 +30,7 @@ fn test_generate_grid() {
         Grid::new(&[vec!['o', 'f'], vec!['i', 't']]),
     ];
 
-    let grid2 = generate_grid(2, 2, &words2);
+    let grid2 = generate_grid(2, 2, &words2).unwrap();
     assert!(valid_grids.contains(&grid2));
 
     let found_words2 = solve_grid_naive(&grid2, &words2);
@@ -41,7 +41,7 @@ fn test_generate_grid() {
     }
 
     let words3 = ["now", "pen", "tan", "top"];
-    let grid3 = generate_grid(3, 3, &words3);
+    let grid3 = generate_grid(3, 3, &words3).unwrap();
 
     assert_eq!(grid3.col_count(), 3);
     assert_eq!(grid3.row_count(), 3);
@@ -55,7 +55,7 @@ fn test_generate_grid() {
     }
 
     let words3x4 = ["pin", "post", "sit", "tent", "tie"];
-    let grid3x4 = generate_grid(3, 4, &words3x4);
+    let grid3x4 = generate_grid(3, 4, &words3x4).unwrap();
 
     assert_eq!(grid3x4.col_count(), 4);
     assert_eq!(grid3x4.row_count(), 3);
