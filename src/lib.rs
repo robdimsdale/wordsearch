@@ -220,9 +220,10 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
 
     impl StackEntry {
         /// Shuffles cells and directions with provided ThreadRng
+        /// Deliberately takes ownership of provided grid and word
         fn new_with_shuffle(
             grid: Grid,
-            word: &str,
+            word: String,
             cells: &[Cell],
             directions: &[Direction],
             rng: &mut ThreadRng,
@@ -234,7 +235,7 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
 
             StackEntry {
                 grid,
-                word: word.to_owned(),
+                word,
                 remaining_possible_directions: ds,
                 remaining_possible_cells: ps,
             }
@@ -243,13 +244,14 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
 
     let mut stack = vec![StackEntry::new_with_shuffle(
         Grid::empty(rows, cols),
-        &word_list.pop().unwrap(), // We know there is at least one word.
+        word_list.pop().unwrap(), // We know there is at least one word.
         cells.as_slice(),
         directions.as_slice(),
         &mut rng,
     )];
 
     loop {
+        // Get the current stack item without popping it off the stac.
         let mut current = match stack.last_mut() {
             Some(c) => c,
             None => return None,
@@ -270,33 +272,38 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
             }
         };
 
-        // Get the position in the grid that we're trying the word against
+        // Get the current position in the grid that we're trying the word against
+        // without popping it off the stack.
         match current.remaining_possible_cells.last() {
             Some(p) => {
+                // If we failed to place the word then we will default to looping again.
                 if let Some(mut grid) =
                     place_word_at_cell(&current.grid, &p, &direction, &current.word)
                 {
+                    // Given we placed the word, then
+                    // if there are more words to try then create a new item on the stack.
+                    // if there are no more words then we are done.
                     if let Some(w) = word_list.pop() {
                         stack.push(StackEntry::new_with_shuffle(
                             grid,
-                            &w,
-                            cells.as_slice(),
-                            directions.as_slice(),
+                            w,
+                            &cells,
+                            &directions,
                             &mut rng,
                         ));
                     } else {
                         grid.fill_empty_cells_with_chars(&mut rng);
                         return Some(grid);
                     }
-                } else {
-                    // TODO: explain why we don't care about this
                 }
             }
             None => {
                 // If there are no more available positions,
                 // put the current word back in the vocab list and backtrack by popping the stack.
-                word_list.push(current.word.clone());
-                stack.pop();
+                // We know there will always be at least one item on the stack because we
+                // retrieve it at the start of the loop (i.e. the 'current' stack item).
+                let new_current = stack.pop().unwrap();
+                word_list.push(new_current.word);
             }
         };
     }
