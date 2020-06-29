@@ -423,22 +423,21 @@ pub fn solve_grid_reverse_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<
         if hashed.contains(&grid.value_at_cell(&cell)) {
             let cell = Cell { row, col };
             if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
-                let w: WordLocation;
-                if words.contains(&found.word.as_str()) {
-                    w = WordLocation {
+                let w: WordLocation = if words.contains(&found.word.as_str()) {
+                    WordLocation {
                         word: found.word,
                         start_cell: found.start_cell,
                         end_cell: found.end_cell,
                         direction: found.direction,
-                    };
+                    }
                 } else {
-                    w = WordLocation {
+                    WordLocation {
                         word: found.word.to_string().chars().rev().collect::<String>(),
                         start_cell: found.end_cell,
                         end_cell: found.start_cell,
                         direction: opposite_direction(&found.direction),
-                    };
-                }
+                    }
+                };
                 word_locations.push(w);
             }
         }
@@ -529,22 +528,21 @@ pub fn solve_grid_reverse_words(grid: &Grid, words: &[&str]) -> Vec<WordLocation
     {
         let cell = Cell { row, col };
         if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
-            let w: WordLocation;
-            if words.contains(&found.word.as_str()) {
-                w = WordLocation {
+            let w: WordLocation = if words.contains(&found.word.as_str()) {
+                WordLocation {
                     word: found.word,
                     start_cell: found.start_cell,
                     end_cell: found.end_cell,
                     direction: found.direction,
-                };
+                }
             } else {
-                w = WordLocation {
+                WordLocation {
                     word: found.word.to_string().chars().rev().collect::<String>(),
                     start_cell: found.end_cell,
                     end_cell: found.start_cell,
                     direction: opposite_direction(&found.direction),
-                };
-            }
+                }
+            };
             word_locations.push(w);
         }
     }
