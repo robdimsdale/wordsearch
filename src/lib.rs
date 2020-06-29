@@ -189,11 +189,11 @@ impl Direction {
 }
 
 pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
-    let mut rng = rand::thread_rng();
-
     if words.is_empty() {
         return None;
     }
+
+    let mut rng = rand::thread_rng();
 
     let mut word_list = words.iter().map(|w| w.to_string()).collect::<Vec<_>>();
 
