@@ -23,6 +23,17 @@ const WORDS: [&str; 19] = [
     "vivacious",
 ];
 
+fn bench14x14(c: &mut Criterion) {
+    let rows = 14;
+    let cols = 14;
+
+    c.bench_function("grid 14x14", |b| {
+        b.iter(|| {
+            generate_grid(black_box(rows), black_box(cols), black_box(&WORDS));
+        })
+    });
+}
+
 fn bench15x15(c: &mut Criterion) {
     let rows = 15;
     let cols = 15;
@@ -45,5 +56,5 @@ fn bench16x16(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench15x15, bench16x16);
+criterion_group!(benches, bench14x14, bench15x15, bench16x16);
 criterion_main!(benches);
