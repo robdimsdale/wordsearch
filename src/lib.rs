@@ -1,15 +1,13 @@
-#![feature(test)]
-
-extern crate test;
-
 use itertools::iproduct;
 use itertools::Itertools;
-use rand::prelude::{IteratorRandom, SliceRandom, ThreadRng};
+use rand::prelude::{SliceRandom, ThreadRng};
+use rand::Rng;
 use std::collections::HashSet;
 use std::fmt;
 use std::slice::Iter;
 
 const EMPTY_CHAR: char = '_';
+const LOWERCASE_CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Cell {
@@ -95,8 +93,7 @@ impl Grid {
         for r in 0..self.chars.len() {
             for c in 0..self.chars[r].len() {
                 if self.chars[r][c] == EMPTY_CHAR {
-                    let ch = ('a'..'z').choose(rng).unwrap();
-                    self.chars[r][c] = ch;
+                    self.chars[r][c] = random_char(rng);
                 }
             }
         }
@@ -190,14 +187,15 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Grid {
         panic!("no words provided!")
     }
 
-    // reverse word list so we can push/pop easily and yet still preserve initial ordering
     let mut word_list = words
         .iter()
         .map(|w| w.to_owned().to_owned())
         .collect::<Vec<_>>();
 
+    // sort word list by longest words first to fit faster.
     word_list.sort_by(|a, b| a.len().cmp(&b.len()));
 
+    // reverse word list so we can push/pop easily and yet still preserve initial ordering
     word_list.reverse();
 
     struct StackEntry {
@@ -326,6 +324,11 @@ fn place_word_at_cell(
     } else {
         None
     };
+}
+
+fn random_char(rng: &mut ThreadRng) -> char {
+    let idx = rng.gen_range(0, LOWERCASE_CHARSET.len());
+    LOWERCASE_CHARSET[idx] as char
 }
 
 pub fn solve_grid_reverse_hash_first_two_letters(grid: &Grid, words: &[&str]) -> Vec<WordLocation> {
@@ -642,7 +645,6 @@ fn find_word_in_direction(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test::Bencher;
 
     fn grid() -> Grid {
         Grid::new(&vec![
@@ -880,97 +882,85 @@ mod tests {
         );
     }
 
-    #[bench]
-    fn bench_solve_grid_reverse(b: &mut Bencher) {
-        b.iter(|| {
-            assert_found_words(&solve_grid_reverse_words(
-                &grid(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            ));
-        });
+    #[test]
+    fn test_solve_grid_reverse() {
+        assert_found_words(&solve_grid_reverse_words(
+            &grid(),
+            &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+        ));
     }
 
-    #[bench]
-    fn bench_solve_grid_naive(b: &mut Bencher) {
-        b.iter(|| {
-            assert_found_words(&solve_grid_naive(
-                &grid(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            ));
-        });
+    #[test]
+    fn test_solve_grid_naive() {
+        assert_found_words(&solve_grid_naive(
+            &grid(),
+            &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+        ));
     }
 
-    #[bench]
-    fn bench_solve_grid_naive_hash_first_letter(b: &mut Bencher) {
-        b.iter(|| {
-            assert_found_words(&solve_grid_hash_first_letter(
-                &grid(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            ));
-        });
+    #[test]
+    fn test_solve_grid_naive_hash_first_letter() {
+        assert_found_words(&solve_grid_hash_first_letter(
+            &grid(),
+            &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+        ));
     }
 
-    #[bench]
-    fn bench_solve_grid_reverse_hash_first_letter(b: &mut Bencher) {
-        b.iter(|| {
-            assert_found_words(&solve_grid_reverse_hash_first_letter(
-                &grid(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            ));
-        });
+    #[test]
+    fn test_solve_grid_reverse_hash_first_letter() {
+        assert_found_words(&solve_grid_reverse_hash_first_letter(
+            &grid(),
+            &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+        ));
     }
 
-    #[bench]
-    fn bench_solve_grid_reverse_hash_first_two_letters(b: &mut Bencher) {
-        b.iter(|| {
-            assert_found_words(&solve_grid_reverse_hash_first_two_letters(
-                &grid(),
-                &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
-            ));
-        });
+    #[test]
+    fn test_solve_grid_reverse_hash_first_two_letters() {
+        assert_found_words(&solve_grid_reverse_hash_first_two_letters(
+            &grid(),
+            &words().iter().map(|w| w.as_str()).collect::<Vec<&str>>(),
+        ));
     }
 
-    #[bench]
-    fn bench_create_2x2(b: &mut Bencher) {
-        b.iter(|| {
-            let words2 = ["if", "it", "to"];
+    #[test]
+    fn test_create_2x2() {
+        let words2 = ["if", "it", "to"];
 
-            let valid_grids = vec![
-                Grid::new(&[vec!['i', 'f'], vec!['t', 'o']]),
-                Grid::new(&[vec!['i', 'f'], vec!['o', 't']]),
-                Grid::new(&[vec!['i', 't'], vec!['o', 'f']]),
-                Grid::new(&[vec!['i', 't'], vec!['f', 'o']]),
-                Grid::new(&[vec!['i', 'o'], vec!['t', 'f']]),
-                Grid::new(&[vec!['i', 'o'], vec!['f', 't']]),
-                Grid::new(&[vec!['f', 'i'], vec!['t', 'o']]),
-                Grid::new(&[vec!['f', 'i'], vec!['o', 't']]),
-                Grid::new(&[vec!['f', 'o'], vec!['t', 'i']]),
-                Grid::new(&[vec!['f', 'o'], vec!['i', 't']]),
-                Grid::new(&[vec!['f', 't'], vec!['o', 'i']]),
-                Grid::new(&[vec!['f', 't'], vec!['i', 'o']]),
-                Grid::new(&[vec!['t', 'i'], vec!['o', 'f']]),
-                Grid::new(&[vec!['t', 'i'], vec!['f', 'o']]),
-                Grid::new(&[vec!['t', 'o'], vec!['i', 'f']]),
-                Grid::new(&[vec!['t', 'o'], vec!['f', 'i']]),
-                Grid::new(&[vec!['t', 'f'], vec!['o', 'i']]),
-                Grid::new(&[vec!['t', 'f'], vec!['i', 'o']]),
-                Grid::new(&[vec!['o', 'i'], vec!['t', 'f']]),
-                Grid::new(&[vec!['o', 'i'], vec!['f', 't']]),
-                Grid::new(&[vec!['o', 't'], vec!['i', 'f']]),
-                Grid::new(&[vec!['o', 't'], vec!['f', 'i']]),
-                Grid::new(&[vec!['o', 'f'], vec!['t', 'i']]),
-                Grid::new(&[vec!['o', 'f'], vec!['i', 't']]),
-            ];
+        let valid_grids = vec![
+            Grid::new(&[vec!['i', 'f'], vec!['t', 'o']]),
+            Grid::new(&[vec!['i', 'f'], vec!['o', 't']]),
+            Grid::new(&[vec!['i', 't'], vec!['o', 'f']]),
+            Grid::new(&[vec!['i', 't'], vec!['f', 'o']]),
+            Grid::new(&[vec!['i', 'o'], vec!['t', 'f']]),
+            Grid::new(&[vec!['i', 'o'], vec!['f', 't']]),
+            Grid::new(&[vec!['f', 'i'], vec!['t', 'o']]),
+            Grid::new(&[vec!['f', 'i'], vec!['o', 't']]),
+            Grid::new(&[vec!['f', 'o'], vec!['t', 'i']]),
+            Grid::new(&[vec!['f', 'o'], vec!['i', 't']]),
+            Grid::new(&[vec!['f', 't'], vec!['o', 'i']]),
+            Grid::new(&[vec!['f', 't'], vec!['i', 'o']]),
+            Grid::new(&[vec!['t', 'i'], vec!['o', 'f']]),
+            Grid::new(&[vec!['t', 'i'], vec!['f', 'o']]),
+            Grid::new(&[vec!['t', 'o'], vec!['i', 'f']]),
+            Grid::new(&[vec!['t', 'o'], vec!['f', 'i']]),
+            Grid::new(&[vec!['t', 'f'], vec!['o', 'i']]),
+            Grid::new(&[vec!['t', 'f'], vec!['i', 'o']]),
+            Grid::new(&[vec!['o', 'i'], vec!['t', 'f']]),
+            Grid::new(&[vec!['o', 'i'], vec!['f', 't']]),
+            Grid::new(&[vec!['o', 't'], vec!['i', 'f']]),
+            Grid::new(&[vec!['o', 't'], vec!['f', 'i']]),
+            Grid::new(&[vec!['o', 'f'], vec!['t', 'i']]),
+            Grid::new(&[vec!['o', 'f'], vec!['i', 't']]),
+        ];
 
-            let grid2 = generate_grid(2, 2, &words2);
-            assert!(valid_grids.contains(&grid2));
+        let grid2 = generate_grid(2, 2, &words2);
+        assert!(valid_grids.contains(&grid2));
 
-            let found_words2 = solve_grid_naive(&grid2, &words2);
-            assert_eq!(found_words2.len(), words2.len());
+        let found_words2 = solve_grid_naive(&grid2, &words2);
+        assert_eq!(found_words2.len(), words2.len());
 
-            for (w, fw) in words2.iter().zip(found_words2.iter()) {
-                assert_eq!(fw.word, **w);
-            }
-        });
+        for (w, fw) in words2.iter().zip(found_words2.iter()) {
+            assert_eq!(fw.word, **w);
+        }
     }
 }
