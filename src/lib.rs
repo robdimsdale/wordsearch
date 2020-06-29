@@ -2,6 +2,7 @@ use itertools::iproduct;
 use itertools::Itertools;
 use rand::prelude::{SliceRandom, ThreadRng};
 use rand::Rng;
+use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt;
 use std::slice::Iter;
@@ -128,6 +129,26 @@ impl Grid {
             row: row as usize,
             col: col as usize,
         })
+    }
+
+    fn cells_remaining_in_direction(&self, cell: &Cell, direction: &Direction) -> usize {
+        let rows_remaining = match direction {
+            Direction::UpLeft | Direction::Up | Direction::UpRight => cell.row,
+            Direction::DownLeft | Direction::Down | Direction::DownRight => {
+                self.row_count() - cell.row - 1
+            }
+            Direction::Left | Direction::Right => usize::MAX,
+        };
+
+        let cols_remaining = match direction {
+            Direction::UpLeft | Direction::Left | Direction::DownLeft => cell.col,
+            Direction::UpRight | Direction::Right | Direction::DownRight => {
+                self.col_count() - cell.col - 1
+            }
+            Direction::Up | Direction::Down => usize::MAX,
+        };
+
+        min(rows_remaining, cols_remaining)
     }
 }
 
@@ -309,6 +330,11 @@ fn place_word_at_cell(
     direction: &Direction,
     word_chars: &[char],
 ) -> Option<WordLocation> {
+    // +1 to account for the current cell.
+    if grid.cells_remaining_in_direction(cell, direction) + 1 < word_chars.len() {
+        return None;
+    }
+
     let c = word_chars[0];
     let char_at_cell = grid.value_at_cell(&cell);
 
@@ -956,5 +982,173 @@ mod tests {
         for (w, fw) in words2.iter().zip(found_words2.iter()) {
             assert_eq!(fw.word, **w);
         }
+    }
+
+    #[test]
+    fn test_grid_cells_remaining_in_direction() {
+        let g1 = Grid::empty(1, 1);
+
+        for direction in Direction::iterator() {
+            assert_eq!(
+                g1.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, direction),
+                0
+            );
+        }
+
+        let g2 = Grid::empty(2, 2);
+
+        // (0,0)
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::Up),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::UpRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::Right),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::DownRight),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::Down),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::DownLeft),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::Left),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::UpLeft),
+            0
+        );
+
+        // (1,0)
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::Up),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::UpRight),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::Right),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::DownRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::Down),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::DownLeft),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::Left),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 0 }, &Direction::UpLeft),
+            0
+        );
+
+        // (0,1)
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::Up),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::UpRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::Right),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::DownRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::Down),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::DownLeft),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::Left),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 0, col: 1 }, &Direction::UpLeft),
+            0
+        );
+
+        // (1,1)
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::Up),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::UpRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::Right),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::DownRight),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::Down),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::DownLeft),
+            0
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::Left),
+            1
+        );
+        assert_eq!(
+            g2.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::UpLeft),
+            1
+        );
+
+        let g3 = Grid::empty(3, 3);
+        assert_eq!(
+            g3.cells_remaining_in_direction(&Cell { row: 0, col: 0 }, &Direction::DownRight),
+            2
+        );
+        assert_eq!(
+            g3.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::DownRight),
+            1
+        );
+        assert_eq!(
+            g3.cells_remaining_in_direction(&Cell { row: 1, col: 1 }, &Direction::UpLeft),
+            1
+        );
+        assert_eq!(
+            g3.cells_remaining_in_direction(&Cell { row: 2, col: 2 }, &Direction::Left),
+            2
+        );
     }
 }

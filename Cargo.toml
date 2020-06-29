@@ -9,3 +9,10 @@ edition = "2018"
 [dependencies]
 itertools = "0.9"
 rand = "0.7"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false
