@@ -38,10 +38,6 @@ impl Grid {
         grid
     }
 
-    pub fn rows(&self) -> &Vec<Vec<char>> {
-        &self.chars
-    }
-
     pub fn row_count(&self) -> usize {
         self.chars.len()
     }
