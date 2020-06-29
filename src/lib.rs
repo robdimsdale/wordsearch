@@ -314,16 +314,14 @@ fn place_word_at_cell(
         });
     }
 
-    return if let Some(next_cell) = grid.next_cell_in_direction(cell, direction) {
-        place_word_at_cell(
-            grid,
-            &next_cell,
-            direction,
-            &word_chars[1..word_chars.len()],
-        )
-    } else {
-        None
-    };
+    let next_cell = grid.next_cell_in_direction(cell, direction)?;
+
+    place_word_at_cell(
+        grid,
+        &next_cell,
+        direction,
+        &word_chars[1..word_chars.len()],
+    )
 }
 
 fn random_char(rng: &mut ThreadRng) -> char {
@@ -604,12 +602,9 @@ fn find_word_in_direction_hash(
         });
     }
 
-    if let Some(next_cell) = grid.next_cell_in_direction(&current_cell, direction) {
-        cells.push(next_cell);
-        return find_word_in_direction(cells, direction, grid, words);
-    }
-
-    None
+    let next_cell = grid.next_cell_in_direction(&current_cell, direction)?;
+    cells.push(next_cell);
+    find_word_in_direction(cells, direction, grid, words)
 }
 
 fn find_word_in_direction(
@@ -634,12 +629,9 @@ fn find_word_in_direction(
         });
     }
 
-    if let Some(next_cell) = grid.next_cell_in_direction(&current_cell, direction) {
-        cells.push(next_cell);
-        return find_word_in_direction(cells, direction, grid, words);
-    }
-
-    None
+    let next_cell = grid.next_cell_in_direction(&current_cell, direction)?;
+    cells.push(next_cell);
+    find_word_in_direction(cells, direction, grid, words)
 }
 
 #[cfg(test)]
