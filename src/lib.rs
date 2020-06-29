@@ -152,6 +152,17 @@ pub struct WordLocation {
     pub direction: Direction,
 }
 
+impl WordLocation {
+    fn into_reversed_location(self) -> WordLocation {
+        WordLocation {
+            word: self.word.chars().rev().collect::<String>(),
+            start_cell: self.end_cell,
+            end_cell: self.start_cell,
+            direction: opposite_direction(&self.direction),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Direction {
     Up,
@@ -365,21 +376,19 @@ pub fn solve_grid_reverse_hash_first_two_letters(grid: &Grid, words: &[&str]) ->
         if let Some(found) =
             find_word_in_direction_hash(vec![cell], &direction, grid, &all_words, &hashed, 2)
         {
-            let w: WordLocation = if words.contains(&found.word.as_str()) {
-                WordLocation {
-                    word: found.word,
-                    start_cell: found.start_cell,
-                    end_cell: found.end_cell,
-                    direction: found.direction,
-                }
-            } else {
-                WordLocation {
-                    word: found.word.to_string().chars().rev().collect::<String>(),
-                    start_cell: found.end_cell,
-                    end_cell: found.start_cell,
-                    direction: opposite_direction(&found.direction),
-                }
+            let mut w = WordLocation {
+                word: found.word,
+                start_cell: found.start_cell,
+                end_cell: found.end_cell,
+                direction: found.direction,
             };
+
+            // If the originally-provided list of words does not contain the found word,
+            // the found word must be reversed.
+            if !words.contains(&w.word.as_str()) {
+                w = w.into_reversed_location();
+            }
+
             word_locations.push(w);
         }
     }
@@ -423,21 +432,19 @@ pub fn solve_grid_reverse_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<
         if hashed.contains(&grid.value_at_cell(&cell)) {
             let cell = Cell { row, col };
             if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
-                let w: WordLocation = if words.contains(&found.word.as_str()) {
-                    WordLocation {
-                        word: found.word,
-                        start_cell: found.start_cell,
-                        end_cell: found.end_cell,
-                        direction: found.direction,
-                    }
-                } else {
-                    WordLocation {
-                        word: found.word.to_string().chars().rev().collect::<String>(),
-                        start_cell: found.end_cell,
-                        end_cell: found.start_cell,
-                        direction: opposite_direction(&found.direction),
-                    }
+                let mut w = WordLocation {
+                    word: found.word,
+                    start_cell: found.start_cell,
+                    end_cell: found.end_cell,
+                    direction: found.direction,
                 };
+
+                // If the originally-provided list of words does not contain the found word,
+                // the found word must be reversed.
+                if !words.contains(&w.word.as_str()) {
+                    w = w.into_reversed_location();
+                }
+
                 word_locations.push(w);
             }
         }
@@ -528,21 +535,19 @@ pub fn solve_grid_reverse_words(grid: &Grid, words: &[&str]) -> Vec<WordLocation
     {
         let cell = Cell { row, col };
         if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
-            let w: WordLocation = if words.contains(&found.word.as_str()) {
-                WordLocation {
-                    word: found.word,
-                    start_cell: found.start_cell,
-                    end_cell: found.end_cell,
-                    direction: found.direction,
-                }
-            } else {
-                WordLocation {
-                    word: found.word.to_string().chars().rev().collect::<String>(),
-                    start_cell: found.end_cell,
-                    end_cell: found.start_cell,
-                    direction: opposite_direction(&found.direction),
-                }
+            let mut w = WordLocation {
+                word: found.word,
+                start_cell: found.start_cell,
+                end_cell: found.end_cell,
+                direction: found.direction,
             };
+
+            // If the originally-provided list of words does not contain the found word,
+            // the found word must be reversed.
+            if !words.contains(&w.word.as_str()) {
+                w = w.into_reversed_location();
+            }
+
             word_locations.push(w);
         }
     }
