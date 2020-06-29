@@ -33,25 +33,8 @@ impl Grid {
     }
 
     pub fn one_word_grid(&self, word: &WordLocation) -> Grid {
-        let mut grid = Grid::new(&vec![vec![EMPTY_CHAR; self.col_count()]; self.row_count()]);
-        let mut cell = word.start_cell.to_owned();
-
-        let val = self.value_at_cell(&cell);
-        grid.set_value_at_cell(&cell, val);
-
-        while let Some(next_cell) = self.next_cell_in_direction(&cell, &word.direction) {
-            let val = self.value_at_cell(&cell);
-            grid.set_value_at_cell(&cell, val);
-
-            if next_cell == word.end_cell {
-                break;
-            }
-            cell = next_cell
-        }
-
-        let last_val = self.value_at_cell(&word.end_cell);
-        grid.set_value_at_cell(&word.end_cell, last_val);
-
+        let mut grid = Grid::empty(self.row_count(), self.col_count());
+        grid.add_word_at_location(word);
         grid
     }
 
