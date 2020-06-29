@@ -89,29 +89,22 @@ impl Grid {
     }
 
     fn next_cell_in_direction(&self, cell: &Cell, direction: &Direction) -> Option<Cell> {
-        let (row, col) = match direction {
-            Direction::Up => (cell.row as isize - 1, cell.col as isize),
-            Direction::UpRight => (cell.row as isize - 1, cell.col as isize + 1),
-            Direction::Right => (cell.row as isize, cell.col as isize + 1),
-            Direction::DownRight => (cell.row as isize + 1, cell.col as isize + 1),
-            Direction::Down => (cell.row as isize + 1, cell.col as isize),
-            Direction::DownLeft => (cell.row as isize + 1, cell.col as isize - 1),
-            Direction::Left => (cell.row as isize, cell.col as isize - 1),
-            Direction::UpLeft => (cell.row as isize - 1, cell.col as isize - 1),
-        };
-
-        if row < 0
-            || col < 0
-            || row as usize >= self.row_count()
-            || col as usize >= self.col_count()
-        {
+        if self.cells_remaining_in_direction(cell, direction) == 0 {
             return None;
         }
 
-        Some(Cell {
-            row: row as usize,
-            col: col as usize,
-        })
+        let (row, col) = match direction {
+            Direction::Up => (cell.row - 1, cell.col),
+            Direction::UpRight => (cell.row - 1, cell.col + 1),
+            Direction::Right => (cell.row, cell.col + 1),
+            Direction::DownRight => (cell.row + 1, cell.col + 1),
+            Direction::Down => (cell.row + 1, cell.col),
+            Direction::DownLeft => (cell.row + 1, cell.col - 1),
+            Direction::Left => (cell.row, cell.col - 1),
+            Direction::UpLeft => (cell.row - 1, cell.col - 1),
+        };
+
+        Some(Cell { row, col })
     }
 
     fn cells_remaining_in_direction(&self, cell: &Cell, direction: &Direction) -> usize {
