@@ -53,9 +53,11 @@ impl Grid {
     // Will clobber any existing chars
     // Panics if word does not fit
     fn add_word_at_location(&mut self, wl: &WordLocation) {
-        if self.cells_remaining_in_direction(&wl.start_cell, &wl.direction) + 1 < wl.word.len() {
-            panic!("Not enough cells remain to place word: {}", wl.word);
-        }
+        assert!(
+            self.cells_remaining_in_direction(&wl.start_cell, &wl.direction) >= wl.word.len() - 1,
+            "Not enough cells remain to place word: {}",
+            wl.word
+        );
 
         let mut cell = wl.start_cell;
         for (i, c) in wl.word.chars().enumerate() {
@@ -134,7 +136,7 @@ impl fmt::Display for Grid {
             writeln!(
                 f,
                 "{}",
-                row.clone().into_iter().intersperse(' ').collect::<String>()
+                Itertools::intersperse(row.clone().into_iter(), ' ').collect::<String>()
             )?
         }
         Ok(())
@@ -278,7 +280,7 @@ pub fn generate_grid(rows: usize, cols: usize, words: &[&str]) -> Option<Grid> {
             Some(p) => {
                 // If we failed to place the word then we will default to looping again.
                 if let Some(mut grid) =
-                    place_word_at_cell(&current.grid, &p, &direction, &current.word)
+                    place_word_at_cell(&current.grid, p, &direction, &current.word)
                 {
                     // Given we placed the word, then
                     // if there are more words to try then create a new item on the stack.
@@ -316,7 +318,7 @@ fn place_word_at_cell(
     word: &str,
 ) -> Option<Grid> {
     // +1 to account for the current cell.
-    if grid.cells_remaining_in_direction(&start_cell, direction) + 1 < word.len() {
+    if grid.cells_remaining_in_direction(start_cell, direction) + 1 < word.len() {
         return None;
     }
 
@@ -386,7 +388,7 @@ pub fn solve_grid_reverse_hash_first_two_letters(grid: &Grid, words: &[&str]) ->
     {
         let cell = Cell { row, col };
         if let Some(found) =
-            find_word_in_direction_hash(vec![cell], &direction, grid, &all_words, &hashed, 2)
+            find_word_in_direction_hash(vec![cell], direction, grid, &all_words, &hashed, 2)
         {
             let mut w = WordLocation {
                 word: found.word,
@@ -443,7 +445,7 @@ pub fn solve_grid_reverse_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<
         let cell = Cell { row, col };
         if hashed.contains(&grid.value_at_cell(&cell)) {
             let cell = Cell { row, col };
-            if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
+            if let Some(found) = find_word_in_direction(vec![cell], direction, grid, &all_words) {
                 let mut w = WordLocation {
                     word: found.word,
                     start_cell: found.start_cell,
@@ -481,7 +483,7 @@ pub fn solve_grid_hash_first_letter(grid: &Grid, words: &[&str]) -> Vec<WordLoca
     ) {
         let cell = Cell { row, col };
         if hashed.contains(&grid.value_at_cell(&cell)) {
-            if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, words) {
+            if let Some(found) = find_word_in_direction(vec![cell], direction, grid, words) {
                 word_locations.push(WordLocation {
                     word: found.word,
                     start_cell: found.start_cell,
@@ -505,7 +507,7 @@ pub fn solve_grid_naive(grid: &Grid, words: &[&str]) -> Vec<WordLocation> {
         Direction::iterator()
     ) {
         let cell = Cell { row, col };
-        if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, words) {
+        if let Some(found) = find_word_in_direction(vec![cell], direction, grid, words) {
             word_locations.push(WordLocation {
                 word: found.word,
                 start_cell: found.start_cell,
@@ -546,7 +548,7 @@ pub fn solve_grid_reverse_words(grid: &Grid, words: &[&str]) -> Vec<WordLocation
         iproduct!(0..grid.row_count(), 0..grid.col_count(), directions.iter())
     {
         let cell = Cell { row, col };
-        if let Some(found) = find_word_in_direction(vec![cell], &direction, grid, &all_words) {
+        if let Some(found) = find_word_in_direction(vec![cell], direction, grid, &all_words) {
             let mut w = WordLocation {
                 word: found.word,
                 start_cell: found.start_cell,
@@ -595,7 +597,7 @@ fn find_word_in_direction_hash(
         && !hashed.contains(
             &cells
                 .iter()
-                .map(|c| grid.value_at_cell(&c))
+                .map(|c| grid.value_at_cell(c))
                 .collect::<Vec<char>>(),
         )
     {

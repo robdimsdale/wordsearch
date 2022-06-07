@@ -66,7 +66,7 @@ fn main() {
 
     for w in &found_words {
         println!("{:?}", w);
-        println!("{}", grid.one_word_grid(&w));
+        println!("{}", grid.one_word_grid(w));
     }
 
     assert_eq!(found_words.len(), words.len());
